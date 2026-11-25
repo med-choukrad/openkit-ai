@@ -8,7 +8,7 @@ OpenKit AI currently provides five practical building blocks:
 - **Structured output validation** — check that a model response is a JSON object containing required fields with the expected Python types.
 - **Retry with exponential backoff** — retry transient failures such as timeouts and connection errors in both synchronous and asynchronous code.
 - **Prompt templates** — define reusable prompts, inspect their required variables, and render them with strict input validation.
-- **Prompt management** — store, retrieve, replace, render, and remove named prompt templates in memory.
+- **Prompt management** — store, retrieve, replace, render, remove, and save or load named prompt templates using JSON.
 
 The project is vendor-neutral. It does not call an AI service, collect data, or require API keys at runtime.
 
@@ -58,7 +58,7 @@ result = call_with_retry(
 
 ### Managing prompts
 
-`PromptManager` stores `PromptTemplate` objects by name. Duplicate names are rejected unless you explicitly pass `replace=True`. The manager is in-memory only; it does not write prompts to disk or send them to an AI provider.
+`PromptManager` stores `PromptTemplate` objects by name. Duplicate names are rejected unless you explicitly pass `replace=True`. The manager keeps prompts in memory by default. Use `save()` and `load()` to persist them in a versioned JSON file; this does not send prompts to an AI provider.
 
 ```python
 manager = PromptManager()
@@ -68,7 +68,7 @@ print(manager.names)  # ("greeting",)
 print(manager.render("greeting", name="Ada"))
 
 manager.add(PromptTemplate("greeting", "Hi {name}!"), replace=True)
-manager.remove("greeting")
+manager.save("prompts.json")\nrestored = PromptManager.load("prompts.json")\nprint(restored.render("greeting", name="Ada"))\nmanager.remove("greeting")
 ```
 
 The validation schema maps required field names to Python types. It also supports nested mappings to validate fields inside nested JSON objects. Extra fields are allowed at every level. A `JSONValidationError` is raised when required fields are missing, have the wrong type, a nested value is not an object, or the top-level JSON value is not an object.
