@@ -47,3 +47,37 @@ def test_rejects_invalid_schema():
 def test_rejects_non_mapping_schema():
     with pytest.raises(TypeError, match="schema must be a mapping"):
         validate_json_response('{"age": 36}', [("age", int)])
+
+
+def test_validates_nested_object_fields():
+    result = validate_json_response(
+        '{"user": {"name": "Ada", "age": 36, "role": "engineer"}}',
+        {"user": {"name": str, "age": int}},
+    )
+    assert result["user"]["name"] == "Ada"
+
+
+def test_reports_nested_missing_field_with_path():
+    with pytest.raises(JSONValidationError, match="missing required field 'user.email'"):
+        validate_json_response(
+            '{"user": {"name": "Ada"}}',
+            {"user": {"name": str, "email": str}},
+        )
+
+
+def test_reports_nested_incorrect_type_with_path():
+    with pytest.raises(JSONValidationError, match="field 'user.age' expected int, got str"):
+        validate_json_response(
+            '{"user": {"age": "36"}}',
+            {"user": {"age": int}},
+        )
+
+
+def test_rejects_non_object_for_nested_schema():
+    with pytest.raises(JSONValidationError, match="field 'user' expected object, got list"):
+        validate_json_response('{"user": []}', {"user": {"name": str}})
+
+
+def test_rejects_invalid_nested_schema():
+    with pytest.raises(TypeError, match="user.age"):
+        validate_json_response('{"user": {"age": 36}}', {"user": {"age": "int"}})
