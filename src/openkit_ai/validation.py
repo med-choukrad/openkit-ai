@@ -2,7 +2,6 @@
 
 from collections.abc import Mapping
 
-
 TypeSpec = type | tuple[type, ...]
 
 
