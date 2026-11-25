@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
 
 
 TypeSpec = type | tuple[type, ...]
@@ -17,7 +16,7 @@ class JSONValidationError(ValueError):
         super().__init__("JSON response validation failed: " + "; ".join(errors))
 
 
-def validate_json_response(response: str, schema: Mapping[str, TypeSpec]) -> dict[str, Any]:
+def validate_json_response(response: str, schema: Mapping[str, TypeSpec]) -> dict[str, object]:
     """Parse a model response and validate required object fields by Python type.
 
     The schema maps required field names to a type (or tuple of accepted types).
