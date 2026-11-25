@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from openkit_ai import async_call_with_retry, call_with_retry
@@ -57,8 +59,6 @@ def test_validates_attempt_count():
     with pytest.raises(ValueError):
         call_with_retry(lambda: None, max_attempts=0)
 
-
-import asyncio
 
 
 def test_async_returns_first_success_without_sleep():
