@@ -2,13 +2,14 @@
 
 from .json_utils import JSONResponseError, parse_json_response
 from .prompts import PromptTemplate
-from .retry import call_with_retry
+from .retry import async_call_with_retry, call_with_retry
 from .validation import JSONValidationError, validate_json_response
 
 __all__ = [
     "JSONResponseError",
     "JSONValidationError",
     "PromptTemplate",
+    "async_call_with_retry",
     "call_with_retry",
     "parse_json_response",
     "validate_json_response",
