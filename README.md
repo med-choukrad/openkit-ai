@@ -49,7 +49,7 @@ result = call_with_retry(
 )
 ```
 
-The validation schema maps required field names to Python types. Extra fields are allowed, and nested objects are not recursively validated. A `JSONValidationError` is raised when required fields are missing, have the wrong type, or the top-level JSON value is not an object.
+The validation schema maps required field names to Python types. It also supports nested mappings to validate fields inside nested JSON objects. Extra fields are allowed at every level. A `JSONValidationError` is raised when required fields are missing, have the wrong type, a nested value is not an object, or the top-level JSON value is not an object.
 
 See the [examples](examples/) directory for complete usage examples.
 
