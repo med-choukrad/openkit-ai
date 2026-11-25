@@ -1,6 +1,6 @@
 import pytest
 
-from openkit_ai import call_with_retry
+from openkit_ai import async_call_with_retry, call_with_retry
 
 
 def test_returns_first_success_without_sleep():
@@ -56,3 +56,96 @@ def test_reraises_after_last_attempt():
 def test_validates_attempt_count():
     with pytest.raises(ValueError):
         call_with_retry(lambda: None, max_attempts=0)
+
+
+import asyncio
+
+
+def test_async_returns_first_success_without_sleep():
+    async def scenario():
+        sleeps = []
+
+        async def operation():
+            return "ok"
+
+        async def fake_sleep(delay):
+            sleeps.append(delay)
+
+        result = await async_call_with_retry(operation, sleep=fake_sleep)
+        assert result == "ok"
+        assert sleeps == []
+
+    asyncio.run(scenario())
+
+
+def test_async_retries_transient_error_then_succeeds():
+    async def scenario():
+        calls = 0
+        sleeps = []
+
+        async def operation():
+            nonlocal calls
+            calls += 1
+            if calls < 3:
+                raise TimeoutError("temporary")
+            return "done"
+
+        async def fake_sleep(delay):
+            sleeps.append(delay)
+
+        result = await async_call_with_retry(
+            operation, base_delay=0.25, jitter=0, sleep=fake_sleep
+        )
+        assert result == "done"
+        assert calls == 3
+        assert sleeps == [0.25, 0.5]
+
+    asyncio.run(scenario())
+
+
+def test_async_does_not_retry_unlisted_exception():
+    async def scenario():
+        calls = 0
+
+        async def operation():
+            nonlocal calls
+            calls += 1
+            raise ValueError("not transient")
+
+        with pytest.raises(ValueError):
+            await async_call_with_retry(operation, sleep=lambda _: asyncio.sleep(0))
+        assert calls == 1
+
+    asyncio.run(scenario())
+
+
+def test_async_reraises_after_last_attempt():
+    async def scenario():
+        calls = 0
+
+        async def operation():
+            nonlocal calls
+            calls += 1
+            raise ConnectionError("offline")
+
+        async def fake_sleep(_):
+            return None
+
+        with pytest.raises(ConnectionError):
+            await async_call_with_retry(
+                operation, max_attempts=2, sleep=fake_sleep
+            )
+        assert calls == 2
+
+    asyncio.run(scenario())
+
+
+def test_async_validates_attempt_count():
+    async def scenario():
+        async def operation():
+            return None
+
+        with pytest.raises(ValueError):
+            await async_call_with_retry(operation, max_attempts=0)
+
+    asyncio.run(scenario())
