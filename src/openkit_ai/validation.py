@@ -1,7 +1,5 @@
 """Validate parsed JSON objects against simple Python type schemas."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 
 
