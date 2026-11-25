@@ -20,10 +20,10 @@ def _validate_schema(schema: Mapping[str, object], path: str = "") -> None:
         field_path = f"{path}.{field}" if path else field
         if isinstance(expected, Mapping):
             _validate_schema(expected, field_path)
-        elif isinstance(expected, type):
-            continue
-        elif isinstance(expected, tuple) and expected and all(
-            isinstance(item, type) for item in expected
+        elif isinstance(expected, type) or (
+            isinstance(expected, tuple)
+            and expected
+            and all(isinstance(item, type) for item in expected)
         ):
             continue
         else:
