@@ -245,7 +245,7 @@ def test_rejects_value_outside_literal_choices():
 
 
 def test_literal_matching_distinguishes_bool_from_int():
-    with pytest.raises(JSONValidationError, match="expected Literal\(1\), got bool"):
+    with pytest.raises(JSONValidationError, match=r"expected Literal\(1,\), got bool"):
         validate_json_response('{"priority": true}', {"priority": Literal[1]})
 
 
