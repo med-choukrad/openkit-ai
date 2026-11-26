@@ -37,3 +37,15 @@ def test_rejects_empty_name_and_template():
 def test_rejects_malformed_braces():
     with pytest.raises(ValueError, match="invalid template syntax"):
         PromptTemplate("broken", "Hello {name")
+
+
+@pytest.mark.parametrize("name", [None, 1, []])
+def test_rejects_non_string_prompt_name(name):
+    with pytest.raises(TypeError, match="name must be a string"):
+        PromptTemplate(name, "Hello")
+
+
+@pytest.mark.parametrize("template", [None, 1, []])
+def test_rejects_non_string_prompt_template(template):
+    with pytest.raises(TypeError, match="template must be a string"):
+        PromptTemplate("greeting", template)
