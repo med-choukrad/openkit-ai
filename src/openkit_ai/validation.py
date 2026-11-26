@@ -36,7 +36,23 @@ def _typed_dict_hints(expected: type) -> dict[str, object]:
 
 
 def _required_typed_dict_fields(expected: type) -> set[str]:
-    return set(expected.__required_keys__)
+    hints = _typed_dict_hints(expected)
+    required = set(expected.__required_keys__)
+    optional = set(expected.__optional_keys__)
+    for field, annotation in hints.items():
+        if get_origin(annotation) is typing.Required:
+            required.add(field)
+            optional.discard(field)
+        elif get_origin(annotation) is typing.NotRequired:
+            optional.add(field)
+            required.discard(field)
+    return required
+
+
+def _unwrap_required(expected: object) -> object:
+    if get_origin(expected) in (typing.Required, typing.NotRequired):
+        return get_args(expected)[0]
+    return expected
 
 
 def _union_args(expected: object) -> tuple[object, ...]:
@@ -57,6 +73,7 @@ def _is_enum_type(expected: object) -> bool:
 
 
 def _validate_type_spec(expected: object, path: str) -> None:
+    expected = _unwrap_required(expected)
     if _is_typed_dict(expected):
         for field, nested in _typed_dict_hints(expected).items():
             _validate_type_spec(nested, f"{path}.{field}" if path else field)
@@ -65,6 +82,8 @@ def _validate_type_spec(expected: object, path: str) -> None:
             if not isinstance(field, str):
                 raise TypeError("schema field names must be strings")
             _validate_type_spec(nested, f"{path}.{field}" if path else field)
+    elif get_origin(expected) is list:
+        _validate_type_spec(get_args(expected)[0], f"{path}[0]")
     elif isinstance(expected, list):
         if len(expected) != 1:
             raise TypeError(f"array schema for {path!r} must contain exactly one item schema")
@@ -89,7 +108,10 @@ def _validate_type_spec(expected: object, path: str) -> None:
         )
 
 
-def _validate_schema(schema: Mapping[str, object]) -> None:
+def _validate_schema(schema: Mapping[str, object] | type) -> None:
+    if _is_typed_dict(schema):
+        _validate_type_spec(schema, "")
+        return
     for field, expected in schema.items():
         if not isinstance(field, str):
             raise TypeError("schema field names must be strings")
@@ -103,6 +125,7 @@ def _literal_value_matches(value: object, literal: object) -> bool:
 
 
 def _matches_expected_type(value: object, expected: object) -> bool:
+    expected = _unwrap_required(expected)
     union_options = _union_args(expected)
     if union_options:
         return any(_matches_expected_type(value, option) for option in union_options)
@@ -135,6 +158,7 @@ def _expected_type_names(expected: object) -> str:
 
 
 def _collect_value_errors(value: object, expected: object, path: str, strict: bool) -> list[str]:
+    expected = _unwrap_required(expected)
     if _is_typed_dict(expected):
         if not isinstance(value, dict):
             return [f"field {path!r} expected object, got {type(value).__name__}"]
@@ -145,6 +169,14 @@ def _collect_value_errors(value: object, expected: object, path: str, strict: bo
         if not isinstance(value, dict):
             return [f"field {path!r} expected object, got {type(value).__name__}"]
         return _collect_errors(value, expected, path, strict)
+    if get_origin(expected) is list:
+        if not isinstance(value, list):
+            return [f"field {path!r} expected array, got {type(value).__name__}"]
+        item_schema = get_args(expected)[0]
+        errors: list[str] = []
+        for index, item in enumerate(value):
+            errors.extend(_collect_value_errors(item, item_schema, f"{path}[{index}]", strict))
+        return errors
     if isinstance(expected, list):
         if not isinstance(value, list):
             return [f"field {path!r} expected array, got {type(value).__name__}"]
@@ -168,6 +200,10 @@ def _collect_typed_dict_errors(
     path: str,
     strict: bool,
 ) -> list[str]:
+    if _is_typed_dict(schema):
+        return _collect_typed_dict_errors(
+            data, schema, _typed_dict_hints(schema), path, strict
+        )
     errors: list[str] = []
     if strict:
         for field in data:
@@ -187,7 +223,7 @@ def _collect_typed_dict_errors(
 
 def _collect_errors(
     data: Mapping[str, object],
-    schema: Mapping[str, object],
+    schema: Mapping[str, object] | type,
     path: str = "",
     strict: bool = False,
 ) -> list[str]:
@@ -207,14 +243,15 @@ def _collect_errors(
 
 
 def validate_json_response(
-    response: str, schema: Mapping[str, TypeSpec], *, strict: bool = False
+    response: str, schema: Mapping[str, TypeSpec] | type, *, strict: bool = False
 ) -> dict[str, object]:
     """Parse JSON and validate required fields against recursive type schemas.
 
     Use [str] for arrays of strings, [{"name": str}] for arrays of objects,
     and nested forms such as [[int]] for arrays of arrays. Use str | None or
     Optional[str] to allow JSON null. Use Literal["draft", "published"] or an
-    Enum class to restrict values. Additional object fields are allowed by
+    Enum class to restrict values, or a TypedDict class for object schemas.
+    Additional object fields are allowed by
     default; pass strict=True to reject undeclared fields at every object level.
     Booleans are not accepted as integers unless bool is explicitly allowed.
     """
@@ -222,8 +259,8 @@ def validate_json_response(
 
     if not isinstance(strict, bool):
         raise TypeError("strict must be a bool")
-    if not isinstance(schema, Mapping):
-        raise TypeError("schema must be a mapping of field names to types")
+    if not isinstance(schema, Mapping) and not _is_typed_dict(schema):
+        raise TypeError("schema must be a mapping of field names to types or a TypedDict")
     _validate_schema(schema)
     data = parse_json_response(response)
     if not isinstance(data, dict):
