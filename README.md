@@ -114,6 +114,27 @@ validate_json_response(
 )
 ```
 
+You can also restrict values with `typing.Literal` or an `Enum` class. The JSON value must match one of the declared literal values or enum member values:
+
+```python
+from enum import Enum
+from typing import Literal
+
+class Status(Enum):
+    PENDING = "pending"
+    COMPLETE = "complete"
+
+validate_json_response(
+    '{"status": "pending", "priority": "high"}',
+    {
+        "status": Status,
+        "priority": Literal["low", "high"],
+    },
+)
+```
+
+Literal matching distinguishes values of different JSON types (for example, `true` does not match `Literal[1]`). Enum validation compares JSON values with each member's `.value`; it does not replace the returned JSON value with an Enum instance.
+
 ## Development
 
 ```bash
