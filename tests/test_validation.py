@@ -63,7 +63,7 @@ def test_validates_nested_object_fields():
 
 def test_reports_nested_missing_field_with_path():
     with pytest.raises(JSONValidationError, match="missing required field 'user.email'"):
-        validate_json_response('{"user": {"name": "Ada", "age": 36}}', {"user": {"name": str, "email": str}})
+        validate_json_response('{"user": {"name": "Ada"}}', {"user": {"name": str, "email": str}})
 
 
 def test_reports_nested_incorrect_type_with_path():
@@ -399,7 +399,7 @@ def test_union_supports_nested_mapping_schema():
 
 def test_union_supports_typed_dict_schema():
     result = validate_json_response(
-        '{"user": {"name": "Ada"}}',
+        '{"user": {"name": "Ada", "age": 36}}',
         {"user": (UserProfile, type(None))},
     )
     assert result["user"]["name"] == "Ada"
