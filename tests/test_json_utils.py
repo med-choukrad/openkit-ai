@@ -33,3 +33,14 @@ def test_rejects_non_string_input():
 def test_rejects_nonstandard_json_numeric_constants(constant):
     with pytest.raises(JSONResponseError, match="No valid JSON object or array"):
         parse_json_response('{"value": ' + constant + '}')
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        '{"value": 1, "value": 2}',
+        '{"outer": {"value": 1, "value": 2}}',
+    ],
+)
+def test_rejects_duplicate_json_object_keys(response):
+    with pytest.raises(JSONResponseError, match="No valid JSON object or array"):
+        parse_json_response(response)
