@@ -8,7 +8,7 @@ from typing import Any, Literal, TypeAlias, Union, get_args, get_origin, get_typ
 
 TypeSpec: TypeAlias = (
     type
-    | tuple[type, ...]
+    | tuple["TypeSpec", ...]
     | Mapping[str, "TypeSpec"]
     | list["TypeSpec"]
     | types.UnionType
@@ -83,6 +83,8 @@ def _unwrap_required(expected: object) -> object:
 
 
 def _union_args(expected: object) -> tuple[object, ...]:
+    if isinstance(expected, tuple):
+        return expected
     origin = get_origin(expected)
     if origin in (Union, types.UnionType):
         return get_args(expected)
@@ -124,11 +126,12 @@ def _validate_type_spec(expected: object, path: str) -> None:
         values = _literal_args(expected)
         if not all(value is None or isinstance(value, (str, int, float, bool)) for value in values):
             raise TypeError(f"Literal schema for {path!r} must contain JSON scalar values")
-    elif _is_enum_type(expected) or isinstance(expected, type) or (
-        isinstance(expected, tuple)
-        and expected
-        and all(isinstance(item, type) for item in expected)
-    ):
+    elif isinstance(expected, tuple):
+        if not expected:
+            raise TypeError(f"type union for {path!r} must contain at least one option")
+        for option in expected:
+            _validate_type_spec(option, path)
+    elif _is_enum_type(expected) or isinstance(expected, type):
         return
     else:
         raise TypeError(
