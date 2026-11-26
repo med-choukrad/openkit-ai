@@ -149,3 +149,21 @@ def test_async_validates_attempt_count():
             await async_call_with_retry(operation, max_attempts=0)
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"max_attempts": True},
+        {"max_attempts": 1.5},
+        {"base_delay": True},
+        {"base_delay": float("nan")},
+        {"max_delay": float("inf")},
+        {"jitter": True},
+        {"jitter": float("nan")},
+        {"retry_on": []},
+    ],
+)
+def test_rejects_invalid_retry_options(options):
+    with pytest.raises(ValueError):
+        call_with_retry(lambda: "ok", **options)
