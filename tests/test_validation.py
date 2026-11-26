@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, List, Literal
 
 try:
     from typing import NotRequired, Required, TypedDict
@@ -128,6 +128,11 @@ def test_validates_nested_arrays():
 def test_rejects_array_schema_without_exactly_one_item_schema(invalid_schema):
     with pytest.raises(TypeError, match="exactly one item schema"):
         validate_json_response('{"items": []}', {"items": invalid_schema})
+
+
+def test_rejects_unparameterized_typing_list_schema():
+    with pytest.raises(TypeError, match="exactly one item schema"):
+        validate_json_response('{"items": []}', {"items": List})
 
 
 
