@@ -38,11 +38,6 @@ def _validate_type_spec(expected: object, path: str) -> None:
 
 
 def _validate_schema(schema: Mapping[str, object]) -> None:
-    if strict:
-        for field in data:
-            if field not in schema:
-                field_path = f"{path}.{field}" if path else field
-                errors.append(f"unexpected field {field_path!r}")
     for field, expected in schema.items():
         if not isinstance(field, str):
             raise TypeError("schema field names must be strings")
@@ -76,8 +71,18 @@ def _collect_value_errors(value: object, expected: object, path: str, strict: bo
     return []
 
 
-def _collect_errors(\n    data: Mapping[str, object], schema: Mapping[str, object], path: str = "", strict: bool = False\n) -> list[str]:
+def _collect_errors(
+    data: Mapping[str, object],
+    schema: Mapping[str, object],
+    path: str = "",
+    strict: bool = False,
+) -> list[str]:
     errors: list[str] = []
+    if strict:
+        for field in data:
+            if field not in schema:
+                field_path = f"{path}.{field}" if path else field
+                errors.append(f"unexpected field {field_path!r}")
     for field, expected in schema.items():
         field_path = f"{path}.{field}" if path else field
         if field not in data:
@@ -87,7 +92,9 @@ def _collect_errors(\n    data: Mapping[str, object], schema: Mapping[str, objec
     return errors
 
 
-def validate_json_response(\n    response: str, schema: Mapping[str, TypeSpec], *, strict: bool = False\n) -> dict[str, object]:
+def validate_json_response(
+    response: str, schema: Mapping[str, TypeSpec], *, strict: bool = False
+) -> dict[str, object]:
     """Parse JSON and validate required fields against recursive type schemas.
 
     Use [str] for arrays of strings, [{"name": str}] for arrays of objects,
