@@ -14,6 +14,10 @@ class PromptTemplate:
     template: str
 
     def __post_init__(self) -> None:
+        if not isinstance(self.name, str):
+            raise TypeError("name must be a string")
+        if not isinstance(self.template, str):
+            raise TypeError("template must be a string")
         if not self.name.strip():
             raise ValueError("name must not be empty")
         if not self.template.strip():
