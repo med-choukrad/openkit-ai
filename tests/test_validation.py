@@ -387,3 +387,21 @@ def test_typed_dict_resolves_postponed_required_in_total_false_class():
 def test_typed_dict_requires_postponed_required_field():
     with pytest.raises(JSONValidationError, match="missing required field 'name'"):
         validate_json_response("{}", PostponedPartialProfile)
+
+
+def test_any_accepts_arbitrary_json_values():
+    result = validate_json_response(
+        '{"text": "hello", "count": 3, "active": true, "items": [1, null]}',
+        {
+            "text": __import__("typing").Any,
+            "count": __import__("typing").Any,
+            "active": __import__("typing").Any,
+            "items": [__import__("typing").Any],
+        },
+    )
+    assert result == {
+        "text": "hello",
+        "count": 3,
+        "active": True,
+        "items": [1, None],
+    }
