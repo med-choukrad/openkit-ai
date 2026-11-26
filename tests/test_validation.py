@@ -284,7 +284,7 @@ def test_rejects_bool_for_integer_enum_value():
         validate_json_response('{"priority": true}', {"priority": Priority})
 
 
-from typing import NotRequired, Required, TypedDict
+from typing import List, NotRequired, Required, TypedDict
 
 
 class UserProfile(TypedDict):
@@ -324,7 +324,7 @@ def test_typed_dict_required_field_is_enforced():
 
 def test_typed_dict_supports_nested_objects_and_arrays():
     class Team(TypedDict):
-        members: list[UserProfile]
+        members: List[UserProfile]
 
     result = validate_json_response(
         '{"members": [{"name": "Ada", "age": 36}]}', Team
