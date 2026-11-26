@@ -5,7 +5,7 @@ Small, dependency-free utilities for developers building AI-powered Python appli
 OpenKit AI currently provides five practical building blocks:
 
 - **JSON response parsing** — extract a valid JSON object or array from plain model output, Markdown code fences, or text with surrounding explanation.
-- **Structured output validation** — check that a model response is a JSON object containing required fields with the expected Python types.
+- **Structured output validation** — check that a model response is a JSON object containing required fields with the expected Python types, including nested objects and arrays.
 - **Retry with exponential backoff** — retry transient failures such as timeouts and connection errors in both synchronous and asynchronous code.
 - **Prompt templates** — define reusable prompts, inspect their required variables, and render them with strict input validation.
 - **Prompt management** — store, retrieve, replace, render, remove, and save or load named prompt templates using JSON.
@@ -68,10 +68,29 @@ print(manager.names)  # ("greeting",)
 print(manager.render("greeting", name="Ada"))
 
 manager.add(PromptTemplate("greeting", "Hi {name}!"), replace=True)
-manager.save("prompts.json")\nrestored = PromptManager.load("prompts.json")\nprint(restored.render("greeting", name="Ada"))\nmanager.remove("greeting")
+manager.save("prompts.json")
+restored = PromptManager.load("prompts.json")
+print(restored.render("greeting", name="Ada"))
+manager.remove("greeting")
 ```
 
-The validation schema maps required field names to Python types. It also supports nested mappings to validate fields inside nested JSON objects. Extra fields are allowed at every level. A `JSONValidationError` is raised when required fields are missing, have the wrong type, a nested value is not an object, or the top-level JSON value is not an object.
+### JSON response validation
+
+The validation schema maps required field names to Python types. Nested mappings validate fields inside objects, and a one-item list schema validates every item in a JSON array:
+
+```python
+data = validate_json_response(
+    '{"users": [{"name": "Ada", "age": 36}], "tags": ["python", "ai"]}',
+    {
+        "users": [{"name": str, "age": int}],
+        "tags": [str],
+    },
+)
+```
+
+Use `[str]` for an array of strings, `[{"name": str}]` for an array of objects, and nested forms such as `[[int]]` for arrays of arrays. Each list schema must contain exactly one item schema. An empty array in the response is valid. Existing schemas using plain types, tuples of types, and nested mappings continue to work. Additional object fields are allowed at every level. Validation errors include array indexes, such as `users[1].age`.
+
+A `JSONValidationError` is raised when required fields are missing or have the wrong type, an array or object has the wrong shape, or the top-level JSON value is not an object.
 
 See the [examples](examples/) directory for complete usage examples.
 
