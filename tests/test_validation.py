@@ -161,7 +161,7 @@ def test_strict_mode_rejects_unexpected_nested_fields():
 
 
 def test_strict_mode_rejects_unexpected_fields_in_array_objects():
-    with pytest.raises(JSONValidationError, match=r"unexpected field 'users\\[0\\]\\.role'"):
+    with pytest.raises(JSONValidationError, match=r"unexpected field 'users\[0\]\.role'"):
         validate_json_response(
             '{"users": [{"name": "Ada", "role": "engineer"}]}',
             {"users": [{"name": str}]},
