@@ -10,7 +10,7 @@ Here is the user profile:
 try:
     profile = validate_json_response(
         model_response,
-        {"name": str, "age": int, "tags": list},
+        {"name": str, "age": int, "tags": [str]},
     )
 except JSONValidationError as error:
     print(f"The model returned invalid data: {error}")
