@@ -74,8 +74,9 @@ class PromptManager:
 
         if not isinstance(data, dict):
             raise TypeError("invalid prompt file: expected a JSON object")
-        if data.get("version") != cls._FORMAT_VERSION:
-            raise ValueError(f"unsupported prompt file version: {data.get('version')!r}")
+        version = data.get("version")
+        if type(version) is not int or version != cls._FORMAT_VERSION:
+            raise ValueError(f"unsupported prompt file version: {version!r}")
         prompts = data.get("prompts")
         if not isinstance(prompts, list):
             raise TypeError("invalid prompt file: 'prompts' must be a list")
