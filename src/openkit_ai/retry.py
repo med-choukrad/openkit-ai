@@ -3,12 +3,45 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import random
 import time
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
 T = TypeVar("T")
+
+
+
+def _validate_retry_options(
+    retry_on: tuple[type[Exception], ...],
+    max_attempts: int,
+    base_delay: float,
+    max_delay: float,
+    jitter: float,
+) -> None:
+    if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or max_attempts < 1:
+        raise ValueError("max_attempts must be a positive integer")
+    for name, value in (("base_delay", base_delay), ("max_delay", max_delay)):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value < 0
+        ):
+            raise ValueError(f"{name} must be a finite non-negative number")
+    if (
+        isinstance(jitter, bool)
+        or not isinstance(jitter, (int, float))
+        or not math.isfinite(jitter)
+        or not 0 <= jitter <= 1
+    ):
+        raise ValueError("jitter must be a finite number between 0 and 1")
+    if not isinstance(retry_on, tuple) or not retry_on or not all(
+        isinstance(error_type, type) and issubclass(error_type, Exception)
+        for error_type in retry_on
+    ):
+        raise ValueError("retry_on must be a non-empty tuple of Exception types")
 
 
 def call_with_retry(
@@ -28,17 +61,7 @@ def call_with_retry(
     random spread to reduce synchronized retries. Inject sleep and
     random_value in tests. max_attempts includes the first call.
     """
-    if max_attempts < 1:
-        raise ValueError("max_attempts must be at least 1")
-    if base_delay < 0 or max_delay < 0:
-        raise ValueError("delays cannot be negative")
-    if not 0 <= jitter <= 1:
-        raise ValueError("jitter must be between 0 and 1")
-    if not retry_on or not all(
-        isinstance(error_type, type) and issubclass(error_type, Exception)
-        for error_type in retry_on
-    ):
-        raise ValueError("retry_on must contain one or more Exception types")
+    _validate_retry_options(retry_on, max_attempts, base_delay, max_delay, jitter)
 
     for attempt in range(max_attempts):
         try:
