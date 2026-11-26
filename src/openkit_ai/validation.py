@@ -95,10 +95,11 @@ def _collect_value_errors(value: object, expected: object, path: str, strict: bo
             errors.extend(_collect_value_errors(item, expected[0], f"{path}[{index}]", strict))
         return errors
     if not _matches_expected_type(value, expected):
-        return [
+        message = (
             f"field {path!r} expected {_expected_type_names(expected)}, "
             f"got {type(value).__name__}"
-        ]
+        )
+        return [message]
     return []
 
 
