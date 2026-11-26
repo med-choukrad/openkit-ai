@@ -60,7 +60,6 @@ def test_validates_attempt_count():
         call_with_retry(lambda: None, max_attempts=0)
 
 
-
 def test_async_returns_first_success_without_sleep():
     async def scenario():
         sleeps = []
@@ -162,8 +161,36 @@ def test_async_validates_attempt_count():
         {"jitter": True},
         {"jitter": float("nan")},
         {"retry_on": []},
+        {"retry_on": (ValueError, 1)},
+        {"retry_on": (BaseException,)},
     ],
 )
 def test_rejects_invalid_retry_options(options):
     with pytest.raises(ValueError):
         call_with_retry(lambda: "ok", **options)
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"max_attempts": True},
+        {"max_attempts": 1.5},
+        {"base_delay": True},
+        {"base_delay": float("nan")},
+        {"max_delay": float("inf")},
+        {"jitter": True},
+        {"jitter": float("nan")},
+        {"retry_on": []},
+        {"retry_on": (ValueError, 1)},
+        {"retry_on": (BaseException,)},
+    ],
+)
+def test_async_rejects_invalid_retry_options(options):
+    async def scenario():
+        async def operation():
+            return "ok"
+
+        with pytest.raises(ValueError):
+            await async_call_with_retry(operation, **options)
+
+    asyncio.run(scenario())
