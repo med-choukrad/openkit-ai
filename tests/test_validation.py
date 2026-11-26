@@ -1,6 +1,11 @@
 from enum import Enum
 from typing import Literal
 
+try:
+    from typing import NotRequired, Required, TypedDict
+except ImportError:  # Python 3.10
+    from typing_extensions import NotRequired, Required, TypedDict
+
 import pytest
 
 from openkit_ai import JSONValidationError, validate_json_response
@@ -284,7 +289,7 @@ def test_rejects_bool_for_integer_enum_value():
         validate_json_response('{"priority": true}', {"priority": Priority})
 
 
-from typing import List, NotRequired, Required, TypedDict
+from typing import List
 
 
 class UserProfile(TypedDict):
