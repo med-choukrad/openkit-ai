@@ -38,6 +38,11 @@ def _validate_type_spec(expected: object, path: str) -> None:
 
 
 def _validate_schema(schema: Mapping[str, object]) -> None:
+    if strict:
+        for field in data:
+            if field not in schema:
+                field_path = f"{path}.{field}" if path else field
+                errors.append(f"unexpected field {field_path!r}")
     for field, expected in schema.items():
         if not isinstance(field, str):
             raise TypeError("schema field names must be strings")
@@ -52,17 +57,17 @@ def _matches_expected_type(value: object, expected: type | tuple[type, ...]) -> 
     return any(isinstance(value, item) for item in types)
 
 
-def _collect_value_errors(value: object, expected: object, path: str) -> list[str]:
+def _collect_value_errors(value: object, expected: object, path: str, strict: bool) -> list[str]:
     if isinstance(expected, Mapping):
         if not isinstance(value, dict):
             return [f"field {path!r} expected object, got {type(value).__name__}"]
-        return _collect_errors(value, expected, path)
+        return _collect_errors(value, expected, path, strict)
     if isinstance(expected, list):
         if not isinstance(value, list):
             return [f"field {path!r} expected array, got {type(value).__name__}"]
         errors: list[str] = []
         for index, item in enumerate(value):
-            errors.extend(_collect_value_errors(item, expected[0], f"{path}[{index}]"))
+            errors.extend(_collect_value_errors(item, expected[0], f"{path}[{index}]", strict))
         return errors
     if not _matches_expected_type(value, expected):
         types = expected if isinstance(expected, tuple) else (expected,)
@@ -71,34 +76,37 @@ def _collect_value_errors(value: object, expected: object, path: str) -> list[st
     return []
 
 
-def _collect_errors(data: Mapping[str, object], schema: Mapping[str, object], path: str = "") -> list[str]:
+def _collect_errors(\n    data: Mapping[str, object], schema: Mapping[str, object], path: str = "", strict: bool = False\n) -> list[str]:
     errors: list[str] = []
     for field, expected in schema.items():
         field_path = f"{path}.{field}" if path else field
         if field not in data:
             errors.append(f"missing required field {field_path!r}")
         else:
-            errors.extend(_collect_value_errors(data[field], expected, field_path))
+            errors.extend(_collect_value_errors(data[field], expected, field_path, strict))
     return errors
 
 
-def validate_json_response(response: str, schema: Mapping[str, TypeSpec]) -> dict[str, object]:
+def validate_json_response(\n    response: str, schema: Mapping[str, TypeSpec], *, strict: bool = False\n) -> dict[str, object]:
     """Parse JSON and validate required fields against recursive type schemas.
 
     Use [str] for arrays of strings, [{"name": str}] for arrays of objects,
     and nested forms such as [[int]] for arrays of arrays. Each list schema
-    must contain exactly one item schema. Additional object fields are allowed.
+    must contain exactly one item schema. Additional object fields are allowed
+    by default; pass strict=True to reject undeclared fields at every object level.
     Booleans are not accepted as integers unless bool is explicitly allowed.
     """
     from .json_utils import parse_json_response
 
+    if not isinstance(strict, bool):
+        raise TypeError("strict must be a bool")
     if not isinstance(schema, Mapping):
         raise TypeError("schema must be a mapping of field names to types")
     _validate_schema(schema)
     data = parse_json_response(response)
     if not isinstance(data, dict):
         raise JSONValidationError(["expected a JSON object at the top level"])
-    errors = _collect_errors(data, schema)
+    errors = _collect_errors(data, schema, strict=strict)
     if errors:
         raise JSONValidationError(errors)
     return data
