@@ -92,3 +92,14 @@ def test_load_rejects_invalid_template(tmp_path):
 
     with pytest.raises(ValueError, match="invalid template syntax"):
         PromptManager.load(path)
+
+
+def test_load_rejects_boolean_format_version(tmp_path):
+    path = tmp_path / "prompts.json"
+    path.write_text(
+        json.dumps({"version": True, "prompts": []}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unsupported prompt file version"):
+        PromptManager.load(path)
