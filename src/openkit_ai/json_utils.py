@@ -43,14 +43,30 @@ def parse_json_response(response: str) -> Any:
         parse_constant=reject_nonstandard_constant,
         object_pairs_hook=reject_duplicate_keys,
     )
-    for index, character in enumerate(text):
-        if character not in "[{":
+    index = 0
+    while index < len(text):
+        character = text[index]
+        if character == '"':
+            # Ignore JSON-looking text inside quoted explanatory prose.
+            index += 1
+            while index < len(text):
+                if text[index] == "\\":
+                    index += 2
+                elif text[index] == '"':
+                    index += 1
+                    break
+                else:
+                    index += 1
             continue
-        try:
-            value, _ = decoder.raw_decode(text[index:])
-        except (json.JSONDecodeError, ValueError):
-            continue
-        if isinstance(value, (dict, list)):
-            return value
+
+        if character in "[{":
+            try:
+                value, _ = decoder.raw_decode(text, index)
+            except (json.JSONDecodeError, ValueError):
+                index += 1
+                continue
+            if isinstance(value, (dict, list)):
+                return value
+        index += 1
 
     raise JSONResponseError("No valid JSON object or array found in response")
