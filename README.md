@@ -88,7 +88,7 @@ data = validate_json_response(
 )
 ```
 
-Use `[str]` for an array of strings, `[{"name": str}]` for an array of objects, and nested forms such as `[[int]]` for arrays of arrays. Each list schema must contain exactly one item schema. An empty array in the response is valid. Existing schemas using plain types, tuples of types, and nested mappings continue to work. Additional object fields are allowed at every level. Validation errors include array indexes, such as `users[1].age`.
+Use `[str]` for an array of strings, `[{"name": str}]` for an array of objects, and nested forms such as `[[int]]` for arrays of arrays. Each list schema must contain exactly one item schema. An empty array in the response is valid. Existing schemas using plain types, tuples of types, and nested mappings continue to work. Additional object fields are allowed at every level. Validation errors include array indexes, such as `users[1].age`. JSON booleans are not accepted as integers (even though Python treats `bool` as a subclass of `int`); use `bool` explicitly in the schema when a boolean is expected.
 
 A `JSONValidationError` is raised when required fields are missing or have the wrong type, an array or object has the wrong shape, or the top-level JSON value is not an object.
 
