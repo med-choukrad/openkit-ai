@@ -29,10 +29,12 @@ def test_rejects_non_string_input():
     with pytest.raises(TypeError):
         parse_json_response({"already": "parsed"})
 
+
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
 def test_rejects_nonstandard_json_numeric_constants(constant):
     with pytest.raises(JSONResponseError, match="No valid JSON object or array"):
         parse_json_response('{"value": ' + constant + '}')
+
 
 @pytest.mark.parametrize(
     "response",
@@ -43,4 +45,15 @@ def test_rejects_nonstandard_json_numeric_constants(constant):
 )
 def test_rejects_duplicate_json_object_keys(response):
     with pytest.raises(JSONResponseError, match="No valid JSON object or array"):
+        parse_json_response(response)
+
+
+def test_ignores_json_looking_text_inside_quoted_prose():
+    response = 'The quoted example is "{\\"fake\\": true}" but the actual result is {"real": true}'
+    assert parse_json_response(response) == {"real": True}
+
+
+def test_does_not_parse_only_json_looking_text_inside_quoted_prose():
+    response = 'The quoted example is "{\\"fake\\": true}" and nothing else.'
+    with pytest.raises(JSONResponseError):
         parse_json_response(response)
