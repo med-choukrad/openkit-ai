@@ -16,4 +16,4 @@ __all__ = [
     "parse_json_response",
     "validate_json_response",
 ]
-__version__ = "0.9.0"
+__version__ = "0.10.0"
