@@ -144,3 +144,39 @@ def test_accepts_boolean_when_explicitly_in_type_tuple():
 def test_rejects_boolean_in_integer_array():
     with pytest.raises(JSONValidationError, match=r"field 'values\[1\]' expected int, got bool"):
         validate_json_response('{"values": [1, true]}', {"values": [int]})
+
+
+def test_strict_mode_rejects_unexpected_top_level_fields():
+    with pytest.raises(JSONValidationError, match="unexpected field 'role'"):
+        validate_json_response('{"name": "Ada", "role": "engineer"}', {"name": str}, strict=True)
+
+
+def test_strict_mode_rejects_unexpected_nested_fields():
+    with pytest.raises(JSONValidationError, match="unexpected field 'user.role'"):
+        validate_json_response(
+            '{"user": {"name": "Ada", "role": "engineer"}}',
+            {"user": {"name": str}},
+            strict=True,
+        )
+
+
+def test_strict_mode_rejects_unexpected_fields_in_array_objects():
+    with pytest.raises(JSONValidationError, match=r"unexpected field 'users\\[0\\]\\.role'"):
+        validate_json_response(
+            '{"users": [{"name": "Ada", "role": "engineer"}]}',
+            {"users": [{"name": str}]},
+            strict=True,
+        )
+
+
+def test_default_mode_continues_to_allow_unexpected_fields():
+    result = validate_json_response(
+        '{"user": {"name": "Ada", "role": "engineer"}}',
+        {"user": {"name": str}},
+    )
+    assert result["user"]["role"] == "engineer"
+
+
+def test_strict_mode_requires_boolean_argument():
+    with pytest.raises(TypeError, match="strict must be a bool"):
+        validate_json_response('{"name": "Ada"}', {"name": str}, strict="yes")
