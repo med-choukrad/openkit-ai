@@ -101,6 +101,8 @@ def _is_enum_type(expected: object) -> bool:
 
 def _validate_type_spec(expected: object, path: str) -> None:
     expected = _unwrap_required(expected)
+    if expected is Any:
+        return
     if _is_typed_dict(expected):
         for field, nested in _typed_dict_hints(expected).items():
             _validate_type_spec(nested, f"{path}.{field}" if path else field)
@@ -153,6 +155,8 @@ def _literal_value_matches(value: object, literal: object) -> bool:
 
 def _matches_expected_type(value: object, expected: object) -> bool:
     expected = _unwrap_required(expected)
+    if expected is Any:
+        return True
     union_options = _union_args(expected)
     if union_options:
         return any(_matches_expected_type(value, option) for option in union_options)
@@ -172,6 +176,8 @@ def _matches_expected_type(value: object, expected: object) -> bool:
 
 
 def _expected_type_names(expected: object) -> str:
+    if expected is Any:
+        return "Any"
     union_options = _union_args(expected)
     if union_options:
         return " or ".join(_expected_type_names(option) for option in union_options)
