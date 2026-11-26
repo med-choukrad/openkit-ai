@@ -192,6 +192,17 @@ def _expected_type_names(expected: object) -> str:
 
 def _collect_value_errors(value: object, expected: object, path: str, strict: bool) -> list[str]:
     expected = _unwrap_required(expected)
+    union_options = _union_args(expected)
+    if union_options:
+        branch_errors = [
+            _collect_value_errors(value, option, path, strict)
+            for option in union_options
+        ]
+        if any(not errors for errors in branch_errors):
+            return []
+        # Report the closest branch's errors rather than trying isinstance()
+        # against structural schemas such as mappings or TypedDict classes.
+        return min(branch_errors, key=len)
     if _is_typed_dict(expected):
         if not isinstance(value, dict):
             return [f"field {path!r} expected object, got {type(value).__name__}"]
