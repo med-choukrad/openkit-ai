@@ -282,3 +282,74 @@ def test_enum_and_literal_work_in_nested_arrays_and_unions():
 def test_rejects_bool_for_integer_enum_value():
     with pytest.raises(JSONValidationError, match="expected Priority, got bool"):
         validate_json_response('{"priority": true}', {"priority": Priority})
+
+
+from typing import NotRequired, Required, TypedDict
+
+
+class UserProfile(TypedDict):
+    name: str
+    age: int
+    nickname: NotRequired[str]
+
+
+class AdminProfile(UserProfile):
+    role: Required[str]
+
+
+def test_validates_typed_dict_schema():
+    result = validate_json_response('{"name": "Ada", "age": 36}', UserProfile)
+    assert result == {"name": "Ada", "age": 36}
+
+
+def test_typed_dict_not_required_field_may_be_omitted():
+    result = validate_json_response('{"name": "Ada", "age": 36}', UserProfile)
+    assert "nickname" not in result
+
+
+def test_typed_dict_not_required_field_is_validated_when_present():
+    with pytest.raises(JSONValidationError, match="field 'nickname' expected str, got int"):
+        validate_json_response('{"name": "Ada", "age": 36, "nickname": 7}', UserProfile)
+
+
+def test_typed_dict_reports_missing_required_field():
+    with pytest.raises(JSONValidationError, match="missing required field 'age'"):
+        validate_json_response('{"name": "Ada"}', UserProfile)
+
+
+def test_typed_dict_required_field_is_enforced():
+    with pytest.raises(JSONValidationError, match="missing required field 'role'"):
+        validate_json_response('{"name": "Ada", "age": 36}', AdminProfile)
+
+
+def test_typed_dict_supports_nested_objects_and_arrays():
+    class Team(TypedDict):
+        members: list[UserProfile]
+
+    result = validate_json_response(
+        '{"members": [{"name": "Ada", "age": 36}]}', Team
+    )
+    assert result["members"][0]["name"] == "Ada"
+
+
+def test_typed_dict_strict_mode_rejects_extra_fields():
+    with pytest.raises(JSONValidationError, match="unexpected field 'nickname_extra'"):
+        validate_json_response(
+            '{"name": "Ada", "age": 36, "nickname_extra": "A"}',
+            UserProfile,
+            strict=True,
+        )
+
+
+def test_typed_dict_is_permissive_about_extra_fields_by_default():
+    result = validate_json_response(
+        '{"name": "Ada", "age": 36, "nickname_extra": "A"}', UserProfile
+    )
+    assert result["nickname_extra"] == "A"
+
+
+def test_typed_dict_can_be_used_in_mapping_schema():
+    result = validate_json_response(
+        '{"user": {"name": "Ada", "age": 36}}', {"user": UserProfile}
+    )
+    assert result["user"]["name"] == "Ada"
