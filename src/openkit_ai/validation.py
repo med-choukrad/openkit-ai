@@ -24,9 +24,11 @@ def _validate_type_spec(expected: object, path: str) -> None:
         if len(expected) != 1:
             raise TypeError(f"array schema for {path!r} must contain exactly one item schema")
         _validate_type_spec(expected[0], f"{path}[0]")
-    elif isinstance(expected, type):
-        return
-    elif isinstance(expected, tuple) and expected and all(isinstance(item, type) for item in expected):
+    elif isinstance(expected, type) or (
+        isinstance(expected, tuple)
+        and expected
+        and all(isinstance(item, type) for item in expected)
+    ):
         return
     else:
         raise TypeError(
