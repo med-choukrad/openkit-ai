@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.5"]
+dev = ["pytest>=8.0", "ruff>=0.5", "typing_extensions>=4.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/openkit_ai"]
