@@ -180,3 +180,33 @@ def test_default_mode_continues_to_allow_unexpected_fields():
 def test_strict_mode_requires_boolean_argument():
     with pytest.raises(TypeError, match="strict must be a bool"):
         validate_json_response('{"name": "Ada"}', {"name": str}, strict="yes")
+
+@pytest.mark.parametrize("nullable_type", [str | None, __import__("typing").Optional[str]])
+def test_accepts_null_for_optional_field(nullable_type):
+    result = validate_json_response('{"nickname": null}', {"nickname": nullable_type})
+    assert result["nickname"] is None
+
+
+def test_accepts_value_for_optional_field():
+    assert validate_json_response(
+        '{"nickname": "Ada"}', {"nickname": str | None}
+    )["nickname"] == "Ada"
+
+
+def test_rejects_wrong_type_for_optional_field():
+    with pytest.raises(JSONValidationError, match="expected str or NoneType, got int"):
+        validate_json_response('{"nickname": 42}', {"nickname": str | None})
+
+
+def test_optional_type_works_in_nested_objects_and_arrays():
+    result = validate_json_response(
+        '{"user": {"nickname": null}, "nicknames": ["Ada", null]}',
+        {"user": {"nickname": str | None}, "nicknames": [str | None]},
+    )
+    assert result["user"]["nickname"] is None
+    assert result["nicknames"] == ["Ada", None]
+
+
+def test_bool_is_not_accepted_by_optional_integer_type():
+    with pytest.raises(JSONValidationError, match="expected int or NoneType, got bool"):
+        validate_json_response('{"count": true}', {"count": int | None})
