@@ -12,16 +12,12 @@ def test_validates_required_fields_and_returns_object():
 
 
 def test_allows_additional_fields():
-    result = validate_json_response(
-        '{"name": "Ada", "role": "engineer"}',
-        {"name": str},
-    )
+    result = validate_json_response('{"name": "Ada", "role": "engineer"}', {"name": str})
     assert result["role"] == "engineer"
 
 
 def test_accepts_tuple_of_types():
-    result = validate_json_response('{"count": 3}', {"count": (int, float)})
-    assert result["count"] == 3
+    assert validate_json_response('{"count": 3}', {"count": (int, float)})["count"] == 3
 
 
 def test_reports_missing_fields():
@@ -59,18 +55,12 @@ def test_validates_nested_object_fields():
 
 def test_reports_nested_missing_field_with_path():
     with pytest.raises(JSONValidationError, match="missing required field 'user.email'"):
-        validate_json_response(
-            '{"user": {"name": "Ada"}}',
-            {"user": {"name": str, "email": str}},
-        )
+        validate_json_response('{"user": {"name": "Ada"}}', {"user": {"name": str, "email": str}})
 
 
 def test_reports_nested_incorrect_type_with_path():
     with pytest.raises(JSONValidationError, match="field 'user.age' expected int, got str"):
-        validate_json_response(
-            '{"user": {"age": "36"}}',
-            {"user": {"age": int}},
-        )
+        validate_json_response('{"user": {"age": "36"}}', {"user": {"age": int}})
 
 
 def test_rejects_non_object_for_nested_schema():
@@ -81,3 +71,52 @@ def test_rejects_non_object_for_nested_schema():
 def test_rejects_invalid_nested_schema():
     with pytest.raises(TypeError, match="user.age"):
         validate_json_response('{"user": {"age": 36}}', {"user": {"age": "int"}})
+
+
+def test_validates_array_of_strings():
+    assert validate_json_response('{"tags": ["ai", "python"]}', {"tags": [str]})["tags"] == ["ai", "python"]
+
+
+def test_accepts_empty_array():
+    assert validate_json_response('{"tags": []}', {"tags": [str]}) == {"tags": []}
+
+
+def test_rejects_non_array_value():
+    with pytest.raises(JSONValidationError, match="field 'tags' expected array, got str"):
+        validate_json_response('{"tags": "ai"}', {"tags": [str]})
+
+
+def test_reports_array_item_type_with_index():
+    with pytest.raises(JSONValidationError, match=r"field 'tags\[1\]' expected str, got int"):
+        validate_json_response('{"tags": ["ai", 2]}', {"tags": [str]})
+
+
+def test_validates_array_of_objects():
+    result = validate_json_response(
+        '{"users": [{"name": "Ada", "age": 36}, {"name": "Lin", "age": 28}]}',
+        {"users": [{"name": str, "age": int}]},
+    )
+    assert len(result["users"]) == 2
+
+
+def test_reports_array_object_error_with_index_and_field():
+    with pytest.raises(JSONValidationError, match=r"field 'users\[1\]\.age' expected int, got str"):
+        validate_json_response(
+            '{"users": [{"name": "Ada", "age": 36}, {"name": "Lin", "age": "28"}]}',
+            {"users": [{"name": str, "age": int}]},
+        )
+
+
+def test_reports_missing_array_object_field_with_index():
+    with pytest.raises(JSONValidationError, match=r"missing required field 'users\[0\]\.age'"):
+        validate_json_response('{"users": [{"name": "Ada"}]}', {"users": [{"name": str, "age": int}]})
+
+
+def test_validates_nested_arrays():
+    assert validate_json_response('{"matrix": [[1, 2], [3]]}', {"matrix": [[int]]})["matrix"] == [[1, 2], [3]]
+
+
+@pytest.mark.parametrize("invalid_schema", [[], [str, int]])
+def test_rejects_array_schema_without_exactly_one_item_schema(invalid_schema):
+    with pytest.raises(TypeError, match="exactly one item schema"):
+        validate_json_response('{"items": []}', {"items": invalid_schema})
