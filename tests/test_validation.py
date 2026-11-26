@@ -120,3 +120,27 @@ def test_validates_nested_arrays():
 def test_rejects_array_schema_without_exactly_one_item_schema(invalid_schema):
     with pytest.raises(TypeError, match="exactly one item schema"):
         validate_json_response('{"items": []}', {"items": invalid_schema})
+
+
+
+def test_rejects_boolean_for_integer_field():
+    with pytest.raises(JSONValidationError, match="field 'count' expected int, got bool"):
+        validate_json_response('{"count": true}', {"count": int})
+
+
+def test_accepts_boolean_for_explicit_boolean_field():
+    assert validate_json_response('{"active": true}', {"active": bool})["active"] is True
+
+
+def test_rejects_boolean_in_integer_or_float_tuple():
+    with pytest.raises(JSONValidationError, match="field 'value' expected int or float, got bool"):
+        validate_json_response('{"value": false}', {"value": (int, float)})
+
+
+def test_accepts_boolean_when_explicitly_in_type_tuple():
+    assert validate_json_response('{"value": true}', {"value": (int, bool)})["value"] is True
+
+
+def test_rejects_boolean_in_integer_array():
+    with pytest.raises(JSONValidationError, match=r"field 'values\\[1\\]' expected int, got bool"):
+        validate_json_response('{"values": [1, true]}', {"values": [int]})
