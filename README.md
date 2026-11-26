@@ -103,6 +103,17 @@ A `JSONValidationError` is raised when required fields are missing or have the w
 
 See the [examples](examples/) directory for complete usage examples.
 
+Optional fields can accept JSON `null` by using `str | None` or `Optional[str]` in the schema. This also works inside nested objects and arrays:
+
+```python
+from typing import Optional
+
+validate_json_response(
+    '{"name": "Ada", "nickname": null}',
+    {"name": str, "nickname": Optional[str]},
+)
+```
+
 ## Development
 
 ```bash
