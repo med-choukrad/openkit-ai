@@ -1,8 +1,9 @@
 """Validate parsed JSON objects against simple Python type schemas."""
 
 from collections.abc import Mapping
+from typing import TypeAlias
 
-TypeSpec = type | tuple[type, ...] | Mapping[str, object]
+TypeSpec: TypeAlias = type | tuple[type, ...] | Mapping[str, "TypeSpec"] | list["TypeSpec"]
 
 
 class JSONValidationError(ValueError):
@@ -13,74 +14,79 @@ class JSONValidationError(ValueError):
         super().__init__("JSON response validation failed: " + "; ".join(errors))
 
 
-def _validate_schema(schema: Mapping[str, object], path: str = "") -> None:
+def _validate_type_spec(expected: object, path: str) -> None:
+    if isinstance(expected, Mapping):
+        for field, nested in expected.items():
+            if not isinstance(field, str):
+                raise TypeError("schema field names must be strings")
+            _validate_type_spec(nested, f"{path}.{field}" if path else field)
+    elif isinstance(expected, list):
+        if len(expected) != 1:
+            raise TypeError(f"array schema for {path!r} must contain exactly one item schema")
+        _validate_type_spec(expected[0], f"{path}[0]")
+    elif isinstance(expected, type):
+        return
+    elif isinstance(expected, tuple) and expected and all(isinstance(item, type) for item in expected):
+        return
+    else:
+        raise TypeError(
+            f"schema entry for {path!r} must be a type, a non-empty tuple of types, "
+            "a nested mapping, or a list containing exactly one item schema"
+        )
+
+
+def _validate_schema(schema: Mapping[str, object]) -> None:
     for field, expected in schema.items():
         if not isinstance(field, str):
             raise TypeError("schema field names must be strings")
-        field_path = f"{path}.{field}" if path else field
-        if isinstance(expected, Mapping):
-            _validate_schema(expected, field_path)
-        elif isinstance(expected, type) or (
-            isinstance(expected, tuple)
-            and expected
-            and all(isinstance(item, type) for item in expected)
-        ):
-            continue
-        else:
-            raise TypeError(
-                f"schema entry for {field_path!r} must be a type, "
-                "a non-empty tuple of types, or a nested mapping"
-            )
+        _validate_type_spec(expected, field)
 
 
-def _collect_errors(
-    data: Mapping[str, object],
-    schema: Mapping[str, object],
-    path: str = "",
-) -> list[str]:
+def _collect_value_errors(value: object, expected: object, path: str) -> list[str]:
+    if isinstance(expected, Mapping):
+        if not isinstance(value, dict):
+            return [f"field {path!r} expected object, got {type(value).__name__}"]
+        return _collect_errors(value, expected, path)
+    if isinstance(expected, list):
+        if not isinstance(value, list):
+            return [f"field {path!r} expected array, got {type(value).__name__}"]
+        errors: list[str] = []
+        for index, item in enumerate(value):
+            errors.extend(_collect_value_errors(item, expected[0], f"{path}[{index}]"))
+        return errors
+    if not isinstance(value, expected):
+        types = expected if isinstance(expected, tuple) else (expected,)
+        names = " or ".join(item.__name__ for item in types)
+        return [f"field {path!r} expected {names}, got {type(value).__name__}"]
+    return []
+
+
+def _collect_errors(data: Mapping[str, object], schema: Mapping[str, object], path: str = "") -> list[str]:
     errors: list[str] = []
     for field, expected in schema.items():
         field_path = f"{path}.{field}" if path else field
         if field not in data:
             errors.append(f"missing required field {field_path!r}")
-            continue
-
-        value = data[field]
-        if isinstance(expected, Mapping):
-            if not isinstance(value, dict):
-                errors.append(
-                    f"field {field_path!r} expected object, got {type(value).__name__}"
-                )
-            else:
-                errors.extend(_collect_errors(value, expected, field_path))
-        elif not isinstance(value, expected):
-            expected_types = expected if isinstance(expected, tuple) else (expected,)
-            expected_names = " or ".join(item.__name__ for item in expected_types)
-            errors.append(
-                f"field {field_path!r} expected {expected_names}, got {type(value).__name__}"
-            )
+        else:
+            errors.extend(_collect_value_errors(data[field], expected, field_path))
     return errors
 
 
-def validate_json_response(
-    response: str,
-    schema: Mapping[str, object],
-) -> dict[str, object]:
-    """Parse a model response and validate required fields by Python type.
+def validate_json_response(response: str, schema: Mapping[str, TypeSpec]) -> dict[str, object]:
+    """Parse JSON and validate required fields against recursive type schemas.
 
-    Nested mappings validate required fields in nested JSON objects. Additional
-    object fields are allowed at every level.
+    Use [str] for arrays of strings, [{"name": str}] for arrays of objects,
+    and nested forms such as [[int]] for arrays of arrays. Each list schema
+    must contain exactly one item schema. Additional object fields are allowed.
     """
     from .json_utils import parse_json_response
 
     if not isinstance(schema, Mapping):
         raise TypeError("schema must be a mapping of field names to types")
-
     _validate_schema(schema)
     data = parse_json_response(response)
     if not isinstance(data, dict):
         raise JSONValidationError(["expected a JSON object at the top level"])
-
     errors = _collect_errors(data, schema)
     if errors:
         raise JSONValidationError(errors)
