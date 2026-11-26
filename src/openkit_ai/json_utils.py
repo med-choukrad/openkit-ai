@@ -28,13 +28,16 @@ def parse_json_response(response: str) -> Any:
             lines = lines[:-1]
         text = "\n".join(lines).strip()
 
-    decoder = json.JSONDecoder()
+    def reject_nonstandard_constant(value: str) -> None:
+        raise ValueError(f"invalid JSON constant: {value}")
+
+    decoder = json.JSONDecoder(parse_constant=reject_nonstandard_constant)
     for index, character in enumerate(text):
         if character not in "[{":
             continue
         try:
             value, _ = decoder.raw_decode(text[index:])
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             continue
         if isinstance(value, (dict, list)):
             return value
