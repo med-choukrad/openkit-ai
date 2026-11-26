@@ -200,10 +200,6 @@ def _collect_typed_dict_errors(
     path: str,
     strict: bool,
 ) -> list[str]:
-    if _is_typed_dict(schema):
-        return _collect_typed_dict_errors(
-            data, schema, _typed_dict_hints(schema), path, strict
-        )
     errors: list[str] = []
     if strict:
         for field in data:
@@ -227,6 +223,10 @@ def _collect_errors(
     path: str = "",
     strict: bool = False,
 ) -> list[str]:
+    if _is_typed_dict(schema):
+        return _collect_typed_dict_errors(
+            data, schema, _typed_dict_hints(schema), path, strict
+        )
     errors: list[str] = []
     if strict:
         for field in data:
