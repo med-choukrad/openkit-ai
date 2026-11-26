@@ -40,10 +40,11 @@ def _required_typed_dict_fields(expected: type) -> set[str]:
     required = set(expected.__required_keys__)
     optional = set(expected.__optional_keys__)
     for field, annotation in hints.items():
-        if get_origin(annotation) is typing.Required:
+        wrapper_name = getattr(get_origin(annotation), "__name__", "")
+        if wrapper_name == "Required":
             required.add(field)
             optional.discard(field)
-        elif get_origin(annotation) is typing.NotRequired:
+        elif wrapper_name == "NotRequired":
             optional.add(field)
             required.discard(field)
     return required
