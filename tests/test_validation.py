@@ -357,3 +357,33 @@ def test_typed_dict_can_be_used_in_mapping_schema():
         '{"user": {"name": "Ada", "age": 36}}', {"user": UserProfile}
     )
     assert result["user"]["name"] == "Ada"
+
+
+
+class PostponedProfile(TypedDict):
+    __annotations__ = {
+        "name": "str",
+        "nickname": "NotRequired[str]",
+    }
+
+
+class PostponedPartialProfile(TypedDict, total=False):
+    __annotations__ = {
+        "name": "Required[str]",
+        "age": "NotRequired[int]",
+    }
+
+
+def test_typed_dict_resolves_postponed_required_markers():
+    result = validate_json_response('{"name": "Ada"}', PostponedProfile)
+    assert result == {"name": "Ada"}
+
+
+def test_typed_dict_resolves_postponed_required_in_total_false_class():
+    result = validate_json_response('{"name": "Ada"}', PostponedPartialProfile)
+    assert result == {"name": "Ada"}
+
+
+def test_typed_dict_requires_postponed_required_field():
+    with pytest.raises(JSONValidationError, match="missing required field 'name'"):
+        validate_json_response("{}", PostponedPartialProfile)
