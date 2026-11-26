@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, List, Literal
+from typing import Any, Literal
 
 try:
     from typing import NotRequired, Required, TypedDict
@@ -132,7 +132,7 @@ def test_rejects_array_schema_without_exactly_one_item_schema(invalid_schema):
 
 def test_rejects_unparameterized_typing_list_schema():
     with pytest.raises(TypeError, match="exactly one item schema"):
-        validate_json_response('{"items": []}', {"items": List})
+        validate_json_response('{"items": []}', {"items": __import__("typing").List})
 
 
 
