@@ -28,3 +28,8 @@ def test_raises_for_invalid_json():
 def test_rejects_non_string_input():
     with pytest.raises(TypeError):
         parse_json_response({"already": "parsed"})
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_rejects_nonstandard_json_numeric_constants(constant):
+    with pytest.raises(JSONResponseError, match="No valid JSON object or array"):
+        parse_json_response('{"value": ' + constant + '}')
