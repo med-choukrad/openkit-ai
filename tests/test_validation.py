@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 try:
     from typing import NotRequired, Required, TypedDict
@@ -393,7 +393,7 @@ def test_any_accepts_arbitrary_json_values():
     result = validate_json_response(
         '{"text": "hello", "count": 3, "active": true, "items": [1, null]}',
         {
-            "text": __import__("typing").Any,
+            "text": Any,
             "count": __import__("typing").Any,
             "active": __import__("typing").Any,
             "items": [__import__("typing").Any],
