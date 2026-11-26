@@ -63,7 +63,7 @@ def test_validates_nested_object_fields():
 
 def test_reports_nested_missing_field_with_path():
     with pytest.raises(JSONValidationError, match="missing required field 'user.email'"):
-        validate_json_response('{"user": {"name": "Ada"}}', {"user": {"name": str, "email": str}})
+        validate_json_response('{"user": {"name": "Ada", "age": 36}}', {"user": {"name": str, "email": str}})
 
 
 def test_reports_nested_incorrect_type_with_path():
@@ -392,7 +392,7 @@ def test_typed_dict_requires_postponed_required_field():
 def test_union_supports_nested_mapping_schema():
     result = validate_json_response(
         '{"payload": {"name": "Ada"}}',
-        {"payload": {"name": {"name": str}} | None},
+        {"payload": ({"name": str}, type(None))},
     )
     assert result["payload"]["name"] == "Ada"
 
@@ -400,7 +400,7 @@ def test_union_supports_nested_mapping_schema():
 def test_union_supports_typed_dict_schema():
     result = validate_json_response(
         '{"user": {"name": "Ada"}}',
-        {"user": UserProfile | None},
+        {"user": (UserProfile, type(None))},
     )
     assert result["user"]["name"] == "Ada"
 
@@ -409,7 +409,7 @@ def test_union_reports_structural_branch_error():
     with pytest.raises(JSONValidationError, match="missing required field 'payload.name'"):
         validate_json_response(
             '{"payload": {"age": 36}}',
-            {"payload": {"name": str} | None},
+            {"payload": ({"name": str}, type(None))},
         )
 
 
