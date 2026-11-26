@@ -389,6 +389,30 @@ def test_typed_dict_requires_postponed_required_field():
         validate_json_response("{}", PostponedPartialProfile)
 
 
+def test_union_supports_nested_mapping_schema():
+    result = validate_json_response(
+        '{"payload": {"name": "Ada"}}',
+        {"payload": {"name": {"name": str}} | None},
+    )
+    assert result["payload"]["name"] == "Ada"
+
+
+def test_union_supports_typed_dict_schema():
+    result = validate_json_response(
+        '{"user": {"name": "Ada"}}',
+        {"user": UserProfile | None},
+    )
+    assert result["user"]["name"] == "Ada"
+
+
+def test_union_reports_structural_branch_error():
+    with pytest.raises(JSONValidationError, match="missing required field 'payload.name'"):
+        validate_json_response(
+            '{"payload": {"age": 36}}',
+            {"payload": {"name": str} | None},
+        )
+
+
 def test_any_accepts_arbitrary_json_values():
     result = validate_json_response(
         '{"text": "hello", "count": 3, "active": true, "items": [1, null]}',
