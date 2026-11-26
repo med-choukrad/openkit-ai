@@ -43,7 +43,7 @@ def test_load_rejects_non_object_root(tmp_path, data):
     path = tmp_path / "prompts.json"
     path.write_text(json.dumps(data), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="expected a JSON object"):
+    with pytest.raises(TypeError, match="expected a JSON object"):
         PromptManager.load(path)
 
 
@@ -62,7 +62,7 @@ def test_load_rejects_invalid_prompt_entries(tmp_path):
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="name.*template.*must be strings"):
+    with pytest.raises(TypeError, match="name.*template.*must be strings"):
         PromptManager.load(path)
 
 
