@@ -31,7 +31,18 @@ def parse_json_response(response: str) -> Any:
     def reject_nonstandard_constant(value: str) -> None:
         raise ValueError(f"invalid JSON constant: {value}")
 
-    decoder = json.JSONDecoder(parse_constant=reject_nonstandard_constant)
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON object key: {key}")
+            result[key] = value
+        return result
+
+    decoder = json.JSONDecoder(
+        parse_constant=reject_nonstandard_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
     for index, character in enumerate(text):
         if character not in "[{":
             continue
