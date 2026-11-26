@@ -1,9 +1,10 @@
 """Validate parsed JSON objects against simple Python type schemas."""
 
 import types
+import typing
 from collections.abc import Mapping
 from enum import Enum
-from typing import Any, Literal, TypeAlias, Union, get_args, get_origin
+from typing import Any, Literal, TypeAlias, Union, get_args, get_origin, get_type_hints
 
 TypeSpec: TypeAlias = (
     type
@@ -21,6 +22,21 @@ class JSONValidationError(ValueError):
     def __init__(self, errors: list[str]) -> None:
         self.errors = tuple(errors)
         super().__init__("JSON response validation failed: " + "; ".join(errors))
+
+
+def _is_typed_dict(expected: object) -> bool:
+    return isinstance(expected, type) and typing.is_typeddict(expected)
+
+
+def _typed_dict_hints(expected: type) -> dict[str, object]:
+    try:
+        return get_type_hints(expected, include_extras=True)
+    except (NameError, TypeError):
+        return dict(expected.__annotations__)
+
+
+def _required_typed_dict_fields(expected: type) -> set[str]:
+    return set(expected.__required_keys__)
 
 
 def _union_args(expected: object) -> tuple[object, ...]:
@@ -41,7 +57,10 @@ def _is_enum_type(expected: object) -> bool:
 
 
 def _validate_type_spec(expected: object, path: str) -> None:
-    if isinstance(expected, Mapping):
+    if _is_typed_dict(expected):
+        for field, nested in _typed_dict_hints(expected).items():
+            _validate_type_spec(nested, f"{path}.{field}" if path else field)
+    elif isinstance(expected, Mapping):
         for field, nested in expected.items():
             if not isinstance(field, str):
                 raise TypeError("schema field names must be strings")
@@ -116,6 +135,12 @@ def _expected_type_names(expected: object) -> str:
 
 
 def _collect_value_errors(value: object, expected: object, path: str, strict: bool) -> list[str]:
+    if _is_typed_dict(expected):
+        if not isinstance(value, dict):
+            return [f"field {path!r} expected object, got {type(value).__name__}"]
+        return _collect_typed_dict_errors(
+            value, expected, _typed_dict_hints(expected), path, strict
+        )
     if isinstance(expected, Mapping):
         if not isinstance(value, dict):
             return [f"field {path!r} expected object, got {type(value).__name__}"]
@@ -134,6 +159,30 @@ def _collect_value_errors(value: object, expected: object, path: str, strict: bo
         )
         return [message]
     return []
+
+
+def _collect_typed_dict_errors(
+    data: Mapping[str, object],
+    typed_dict: type,
+    schema: Mapping[str, object],
+    path: str,
+    strict: bool,
+) -> list[str]:
+    errors: list[str] = []
+    if strict:
+        for field in data:
+            if field not in schema:
+                field_path = f"{path}.{field}" if path else field
+                errors.append(f"unexpected field {field_path!r}")
+    required = _required_typed_dict_fields(typed_dict)
+    for field, expected in schema.items():
+        field_path = f"{path}.{field}" if path else field
+        if field not in data:
+            if field in required:
+                errors.append(f"missing required field {field_path!r}")
+        else:
+            errors.extend(_collect_value_errors(data[field], expected, field_path, strict))
+    return errors
 
 
 def _collect_errors(
