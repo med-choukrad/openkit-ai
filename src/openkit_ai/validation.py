@@ -44,6 +44,14 @@ def _validate_schema(schema: Mapping[str, object]) -> None:
         _validate_type_spec(expected, field)
 
 
+def _matches_expected_type(value: object, expected: type | tuple[type, ...]) -> bool:
+    types = expected if isinstance(expected, tuple) else (expected,)
+    # bool is a subclass of int in Python, but JSON booleans are not JSON numbers.
+    if isinstance(value, bool) and int in types and bool not in types:
+        types = tuple(item for item in types if item is not int)
+    return any(isinstance(value, item) for item in types)
+
+
 def _collect_value_errors(value: object, expected: object, path: str) -> list[str]:
     if isinstance(expected, Mapping):
         if not isinstance(value, dict):
@@ -56,7 +64,7 @@ def _collect_value_errors(value: object, expected: object, path: str) -> list[st
         for index, item in enumerate(value):
             errors.extend(_collect_value_errors(item, expected[0], f"{path}[{index}]"))
         return errors
-    if not isinstance(value, expected):
+    if not _matches_expected_type(value, expected):
         types = expected if isinstance(expected, tuple) else (expected,)
         names = " or ".join(item.__name__ for item in types)
         return [f"field {path!r} expected {names}, got {type(value).__name__}"]
@@ -80,6 +88,7 @@ def validate_json_response(response: str, schema: Mapping[str, TypeSpec]) -> dic
     Use [str] for arrays of strings, [{"name": str}] for arrays of objects,
     and nested forms such as [[int]] for arrays of arrays. Each list schema
     must contain exactly one item schema. Additional object fields are allowed.
+    Booleans are not accepted as integers unless bool is explicitly allowed.
     """
     from .json_utils import parse_json_response
 
