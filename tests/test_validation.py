@@ -1,3 +1,6 @@
+from enum import Enum
+from typing import Literal
+
 import pytest
 
 from openkit_ai import JSONValidationError, validate_json_response
@@ -210,3 +213,72 @@ def test_optional_type_works_in_nested_objects_and_arrays():
 def test_bool_is_not_accepted_by_optional_integer_type():
     with pytest.raises(JSONValidationError, match="expected int or NoneType, got bool"):
         validate_json_response('{"count": true}', {"count": int | None})
+
+
+
+class TaskStatus(Enum):
+    PENDING = "pending"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+
+class Priority(Enum):
+    LOW = 1
+    HIGH = 3
+
+
+@pytest.mark.parametrize("status", ["pending", "complete", "failed"])
+def test_accepts_allowed_literal_values(status):
+    result = validate_json_response(
+        '{"status": "' + status + '"}',
+        {"status": Literal["pending", "complete", "failed"]},
+    )
+    assert result["status"] == status
+
+
+def test_rejects_value_outside_literal_choices():
+    with pytest.raises(JSONValidationError, match=r"expected Literal\('pending', 'complete'\)"):
+        validate_json_response(
+            '{"status": "unknown"}',
+            {"status": Literal["pending", "complete"]},
+        )
+
+
+def test_literal_matching_distinguishes_bool_from_int():
+    with pytest.raises(JSONValidationError, match="expected Literal\(1\), got bool"):
+        validate_json_response('{"priority": true}', {"priority": Literal[1]})
+
+
+def test_accepts_enum_member_values_from_json():
+    result = validate_json_response(
+        '{"status": "complete"}',
+        {"status": TaskStatus},
+    )
+    assert result["status"] == "complete"
+
+
+def test_rejects_value_not_defined_in_enum():
+    with pytest.raises(JSONValidationError, match="expected TaskStatus, got str"):
+        validate_json_response('{"status": "unknown"}', {"status": TaskStatus})
+
+
+def test_accepts_integer_enum_values_from_json():
+    result = validate_json_response('{"priority": 3}', {"priority": Priority})
+    assert result["priority"] == 3
+
+
+def test_enum_and_literal_work_in_nested_arrays_and_unions():
+    result = validate_json_response(
+        '{"statuses": ["pending", "complete"], "preferred": null}',
+        {
+            "statuses": [TaskStatus],
+            "preferred": Literal["pending", "complete"] | None,
+        },
+    )
+    assert result["statuses"] == ["pending", "complete"]
+    assert result["preferred"] is None
+
+
+def test_rejects_bool_for_integer_enum_value():
+    with pytest.raises(JSONValidationError, match="expected Priority, got bool"):
+        validate_json_response('{"priority": true}', {"priority": Priority})
