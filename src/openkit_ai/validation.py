@@ -114,7 +114,12 @@ def _validate_type_spec(expected: object, path: str) -> None:
                 raise TypeError("schema field names must be strings")
             _validate_type_spec(nested, f"{path}.{field}" if path else field)
     elif get_origin(expected) is list:
-        _validate_type_spec(get_args(expected)[0], f"{path}[0]")
+        item_args = get_args(expected)
+        if len(item_args) != 1:
+            raise TypeError(
+                f"array schema for {path!r} must contain exactly one item schema"
+            )
+        _validate_type_spec(item_args[0], f"{path}[0]")
     elif isinstance(expected, list):
         if len(expected) != 1:
             raise TypeError(f"array schema for {path!r} must contain exactly one item schema")
