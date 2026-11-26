@@ -193,15 +193,22 @@ def _expected_type_names(expected: object) -> str:
 def _collect_value_errors(value: object, expected: object, path: str, strict: bool) -> list[str]:
     expected = _unwrap_required(expected)
     union_options = _union_args(expected)
-    if union_options:
+    has_structural_option = any(
+        _is_typed_dict(option)
+        or isinstance(option, Mapping)
+        or get_origin(option) is list
+        or isinstance(option, list)
+        for option in union_options
+    )
+    if union_options and has_structural_option:
         branch_errors = [
             _collect_value_errors(value, option, path, strict)
             for option in union_options
         ]
         if any(not errors for errors in branch_errors):
             return []
-        # Report the closest branch's errors rather than trying isinstance()
-        # against structural schemas such as mappings or TypedDict classes.
+        # Report the closest structural branch's errors. Scalar-only unions
+        # continue through the normal type matcher to preserve combined errors.
         return min(branch_errors, key=len)
     if _is_typed_dict(expected):
         if not isinstance(value, dict):
