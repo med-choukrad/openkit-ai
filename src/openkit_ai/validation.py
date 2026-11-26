@@ -25,7 +25,33 @@ class JSONValidationError(ValueError):
 
 
 def _is_typed_dict(expected: object) -> bool:
-    return isinstance(expected, type) and typing.is_typeddict(expected)
+    if not isinstance(expected, type):
+        return False
+    is_typeddict = getattr(typing, "is_typeddict", None)
+    if is_typeddict is not None and is_typeddict(expected):
+        return True
+    # typing_extensions.TypedDict on Python 3.10 uses its own metaclass.
+    return (
+        type(expected).__name__ == "_TypedDictMeta"
+        and hasattr(expected, "__required_keys__")
+        and hasattr(expected, "__optional_keys__")
+    )
+
+
+def _required_markers() -> tuple[object, ...]:
+    markers = tuple(
+        marker
+        for marker in (
+            getattr(typing, "Required", None),
+            getattr(typing, "NotRequired", None),
+        )
+        if marker is not None
+    )
+    try:
+        from typing_extensions import NotRequired, Required
+    except ImportError:
+        return markers
+    return (*markers, Required, NotRequired)
 
 
 def _typed_dict_hints(expected: type) -> dict[str, object]:
@@ -51,7 +77,7 @@ def _required_typed_dict_fields(expected: type) -> set[str]:
 
 
 def _unwrap_required(expected: object) -> object:
-    if get_origin(expected) in (typing.Required, typing.NotRequired):
+    if get_origin(expected) in _required_markers():
         return get_args(expected)[0]
     return expected
 
