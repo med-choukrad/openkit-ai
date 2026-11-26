@@ -73,21 +73,21 @@ class PromptManager:
             raise ValueError(f"invalid prompt file JSON: {error}") from error
 
         if not isinstance(data, dict):
-            raise ValueError("invalid prompt file: expected a JSON object")
+            raise TypeError("invalid prompt file: expected a JSON object")
         if data.get("version") != cls._FORMAT_VERSION:
             raise ValueError(f"unsupported prompt file version: {data.get('version')!r}")
         prompts = data.get("prompts")
         if not isinstance(prompts, list):
-            raise ValueError("invalid prompt file: 'prompts' must be a list")
+            raise TypeError("invalid prompt file: 'prompts' must be a list")
 
         manager = cls()
         for index, item in enumerate(prompts):
             if not isinstance(item, dict):
-                raise ValueError(f"invalid prompt at index {index}: expected an object")
+                raise TypeError(f"invalid prompt at index {index}: expected an object")
             name = item.get("name")
             template = item.get("template")
             if not isinstance(name, str) or not isinstance(template, str):
-                raise ValueError(
+                raise TypeError(
                     f"invalid prompt at index {index}: 'name' and 'template' "
                     "must be strings"
                 )
