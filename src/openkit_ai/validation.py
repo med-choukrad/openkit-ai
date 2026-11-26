@@ -2,7 +2,8 @@
 
 import types
 from collections.abc import Mapping
-from typing import Any, TypeAlias, Union, get_args, get_origin
+from enum import Enum
+from typing import Any, Literal, TypeAlias, Union, get_args, get_origin
 
 TypeSpec: TypeAlias = (
     type
@@ -29,6 +30,16 @@ def _union_args(expected: object) -> tuple[object, ...]:
     return ()
 
 
+def _literal_args(expected: object) -> tuple[object, ...]:
+    if get_origin(expected) is Literal:
+        return get_args(expected)
+    return ()
+
+
+def _is_enum_type(expected: object) -> bool:
+    return isinstance(expected, type) and issubclass(expected, Enum)
+
+
 def _validate_type_spec(expected: object, path: str) -> None:
     if isinstance(expected, Mapping):
         for field, nested in expected.items():
@@ -42,6 +53,12 @@ def _validate_type_spec(expected: object, path: str) -> None:
     elif _union_args(expected):
         for option in _union_args(expected):
             _validate_type_spec(option, path)
+    elif _literal_args(expected):
+        values = _literal_args(expected)
+        if not all(value is None or isinstance(value, (str, int, float, bool)) for value in values):
+            raise TypeError(f"Literal schema for {path!r} must contain JSON scalar values")
+    elif _is_enum_type(expected):
+        return
     elif isinstance(expected, type) or (
         isinstance(expected, tuple)
         and expected
@@ -62,10 +79,23 @@ def _validate_schema(schema: Mapping[str, object]) -> None:
         _validate_type_spec(expected, field)
 
 
+def _literal_value_matches(value: object, literal: object) -> bool:
+    if type(value) is not type(literal):
+        return False
+    return value == literal
+
+
 def _matches_expected_type(value: object, expected: object) -> bool:
     union_options = _union_args(expected)
     if union_options:
         return any(_matches_expected_type(value, option) for option in union_options)
+
+    literal_values = _literal_args(expected)
+    if literal_values:
+        return any(_literal_value_matches(value, option) for option in literal_values)
+
+    if _is_enum_type(expected):
+        return any(_literal_value_matches(value, member.value) for member in expected)
 
     types_to_check = expected if isinstance(expected, tuple) else (expected,)
     # bool is a subclass of int in Python, but JSON booleans are not JSON numbers.
@@ -78,6 +108,11 @@ def _expected_type_names(expected: object) -> str:
     union_options = _union_args(expected)
     if union_options:
         return " or ".join(_expected_type_names(option) for option in union_options)
+    literal_values = _literal_args(expected)
+    if literal_values:
+        return f"Literal{literal_values!r}"
+    if _is_enum_type(expected):
+        return expected.__name__
     types_to_check = expected if isinstance(expected, tuple) else (expected,)
     return " or ".join(item.__name__ for item in types_to_check)
 
@@ -131,7 +166,8 @@ def validate_json_response(
 
     Use [str] for arrays of strings, [{"name": str}] for arrays of objects,
     and nested forms such as [[int]] for arrays of arrays. Use str | None or
-    Optional[str] to allow JSON null. Additional object fields are allowed by
+    Optional[str] to allow JSON null. Use Literal["draft", "published"] or an
+    Enum class to restrict values. Additional object fields are allowed by
     default; pass strict=True to reject undeclared fields at every object level.
     Booleans are not accepted as integers unless bool is explicitly allowed.
     """
