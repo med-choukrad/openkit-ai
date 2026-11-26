@@ -44,9 +44,9 @@ class PromptManager:
         """Return registered prompt names in insertion order."""
         return tuple(self._templates)
 
-    def render(self, name: str, **values: object) -> str:
+    def render(self, prompt_name: str, **values: object) -> str:
         """Render a registered prompt using its validated template."""
-        return self.get(name).render(**values)
+        return self.get(prompt_name).render(**values)
 
     def save(self, path: str | Path) -> None:
         """Save all prompts to a UTF-8 JSON file."""
