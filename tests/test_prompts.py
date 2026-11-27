@@ -68,7 +68,7 @@ def test_attribute_and_index_fields_use_their_root_variables():
     ) == "Ada: first"
 
 
-@pytest.mark.parametrize("template", ["{}", "{0}", "{1!r}"])
+@pytest.mark.parametrize("template", ["{}", "{0}", "{1!r}", "{[0]}", "{0.name}"])
 def test_rejects_positional_format_fields(template):
     with pytest.raises(ValueError, match="positional replacement fields are not supported"):
         PromptTemplate("positional", template)
