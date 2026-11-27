@@ -278,6 +278,18 @@ def test_rejects_value_not_defined_in_enum():
         validate_json_response('{"status": "unknown"}', {"status": TaskStatus})
 
 
+class InvalidEnum(Enum):
+    NAN = float("nan")
+    INFINITY = float("inf")
+    OBJECT = ("not", "a JSON scalar")
+
+
+@pytest.mark.parametrize("enum_type", [InvalidEnum])
+def test_rejects_enum_with_non_json_member_values(enum_type):
+    with pytest.raises(TypeError, match="finite JSON scalar values"):
+        validate_json_response("{\\"value\\": 1}", {"value": enum_type})
+
+
 def test_accepts_integer_enum_values_from_json():
     result = validate_json_response('{"priority": 3}', {"priority": Priority})
     assert result["priority"] == 3
