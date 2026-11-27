@@ -9,6 +9,7 @@ except ImportError:  # Python 3.10
 import pytest
 
 from openkit_ai import JSONValidationError, validate_json_response
+from openkit_ai.validation import _required_typed_dict_fields
 
 
 def test_validates_required_fields_and_returns_object():
@@ -394,6 +395,21 @@ class PostponedPartialProfile(TypedDict, total=False):
     __annotations__ = {
         "name": "Required[str]",
         "age": "NotRequired[int]",
+    }
+
+
+class PostponedWithUnresolvedReference(TypedDict):
+    __annotations__ = {
+        "optional": "NotRequired[str]",
+        "required": "Required[int]",
+        "unknown": "MissingType",
+    }
+
+
+def test_typed_dict_resolves_required_markers_when_another_annotation_is_unresolved():
+    assert _required_typed_dict_fields(PostponedWithUnresolvedReference) == {
+        "required",
+        "unknown",
     }
 
 
