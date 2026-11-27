@@ -60,6 +60,37 @@ def test_validates_attempt_count():
         call_with_retry(lambda: None, max_attempts=0)
 
 
+def test_retry_delay_never_exceeds_max_delay_after_jitter():
+    sleeps = []
+
+    def operation():
+        raise TimeoutError("temporary")
+
+    with pytest.raises(TimeoutError):
+        call_with_retry(
+            operation,
+            max_attempts=2,
+            base_delay=8,
+            max_delay=8,
+            jitter=1,
+            random_value=lambda: 1,
+            sleep=sleeps.append,
+        )
+
+    assert sleeps == [8]
+
+
+@pytest.mark.parametrize("sample", [-0.1, 1.1, float("nan"), float("inf"), True])
+def test_rejects_invalid_random_value(sample):
+    with pytest.raises(ValueError, match="random_value must return"):
+        call_with_retry(
+            lambda: (_ for _ in ()).throw(TimeoutError("temporary")),
+            max_attempts=2,
+            random_value=lambda: sample,
+            sleep=lambda _: None,
+        )
+
+
 def test_async_returns_first_success_without_sleep():
     async def scenario():
         sleeps = []
@@ -192,5 +223,51 @@ def test_async_rejects_invalid_retry_options(options):
 
         with pytest.raises(ValueError):
             await async_call_with_retry(operation, **options)
+
+    asyncio.run(scenario())
+
+
+def test_async_retry_delay_never_exceeds_max_delay_after_jitter():
+    async def scenario():
+        sleeps = []
+
+        async def operation():
+            raise TimeoutError("temporary")
+
+        async def fake_sleep(delay):
+            sleeps.append(delay)
+
+        with pytest.raises(TimeoutError):
+            await async_call_with_retry(
+                operation,
+                max_attempts=2,
+                base_delay=8,
+                max_delay=8,
+                jitter=1,
+                random_value=lambda: 1,
+                sleep=fake_sleep,
+            )
+
+        assert sleeps == [8]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("sample", [-0.1, 1.1, float("nan"), float("inf"), True])
+def test_async_rejects_invalid_random_value(sample):
+    async def scenario():
+        async def operation():
+            raise TimeoutError("temporary")
+
+        async def fake_sleep(_):
+            return None
+
+        with pytest.raises(ValueError, match="random_value must return"):
+            await async_call_with_retry(
+                operation,
+                max_attempts=2,
+                random_value=lambda: sample,
+                sleep=fake_sleep,
+            )
 
     asyncio.run(scenario())
