@@ -497,3 +497,9 @@ def test_any_accepts_arbitrary_json_values():
         "active": True,
         "items": [1, None],
     }
+
+
+@pytest.mark.parametrize("invalid_union", [(int, ()), ((int, ()),)])
+def test_rejects_empty_nested_tuple_union_options(invalid_union):
+    with pytest.raises(TypeError, match="type union.*at least one option"):
+        validate_json_response('{"value": 1}', {"value": invalid_union})
