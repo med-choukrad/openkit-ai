@@ -73,7 +73,14 @@ def _typed_dict_hints(expected: type) -> dict[str, object]:
             globalns = vars(module) if module is not None else {}
             for field, annotation in base.__annotations__.items():
                 try:
-                    resolved[field] = typing._eval_type(annotation, globalns, localns)
+                    holder = type(
+                        "_TypedDictAnnotation",
+                        (),
+                        {"__module__": base.__module__, "__annotations__": {field: annotation}},
+                    )
+                    resolved[field] = get_type_hints(
+                        holder, globalns, localns, include_extras=True
+                    )[field]
                 except (NameError, TypeError):
                     # Keep unresolved annotations intact so schema validation can
                     # report them as invalid without losing inherited or sibling fields.
