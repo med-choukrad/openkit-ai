@@ -43,6 +43,27 @@ def _validate_retry_options(
         raise ValueError("retry_on must be a non-empty tuple of Exception types")
 
 
+def _retry_delay(
+    attempt: int,
+    base_delay: float,
+    max_delay: float,
+    jitter: float,
+    random_value: Callable[[], float],
+) -> float:
+    delay = min(max_delay, base_delay * (2**attempt))
+    if jitter:
+        sample = random_value()
+        if (
+            isinstance(sample, bool)
+            or not isinstance(sample, (int, float))
+            or not math.isfinite(sample)
+            or not 0 <= sample <= 1
+        ):
+            raise ValueError("random_value must return a finite number between 0 and 1")
+        delay *= 1 - jitter + (2 * jitter * sample)
+    return min(max_delay, delay)
+
+
 def call_with_retry(
     operation: Callable[[], T],
     *,
@@ -68,9 +89,7 @@ def call_with_retry(
         except retry_on:
             if attempt == max_attempts - 1:
                 raise
-            delay = min(max_delay, base_delay * (2**attempt))
-            if jitter:
-                delay *= 1 - jitter + (2 * jitter * random_value())
+            delay = _retry_delay(attempt, base_delay, max_delay, jitter, random_value)
             sleep(delay)
 
     raise RuntimeError("unreachable")
@@ -101,9 +120,7 @@ async def async_call_with_retry(
         except retry_on:
             if attempt == max_attempts - 1:
                 raise
-            delay = min(max_delay, base_delay * (2**attempt))
-            if jitter:
-                delay *= 1 - jitter + (2 * jitter * random_value())
+            delay = _retry_delay(attempt, base_delay, max_delay, jitter, random_value)
             await sleep(delay)
 
     raise RuntimeError("unreachable")
