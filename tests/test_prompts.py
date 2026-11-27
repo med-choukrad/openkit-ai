@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from openkit_ai import PromptTemplate
@@ -49,3 +51,24 @@ def test_rejects_non_string_prompt_name(name):
 def test_rejects_non_string_prompt_template(template):
     with pytest.raises(TypeError, match="template must be a string"):
         PromptTemplate("greeting", template)
+
+
+def test_includes_nested_format_spec_variables():
+    prompt = PromptTemplate("aligned", "{value:>{width}}")
+    assert prompt.variables == ("value", "width")
+    assert prompt.render(value="ok", width=5) == "   ok"
+
+
+def test_attribute_and_index_fields_use_their_root_variables():
+    prompt = PromptTemplate("details", "{user.name}: {items[0]}")
+    assert prompt.variables == ("user", "items")
+    assert prompt.render(
+        user=SimpleNamespace(name="Ada"),
+        items=["first", "second"],
+    ) == "Ada: first"
+
+
+@pytest.mark.parametrize("template", ["{}", "{0}", "{1!r}"])
+def test_rejects_positional_format_fields(template):
+    with pytest.raises(ValueError, match="positional replacement fields are not supported"):
+        PromptTemplate("positional", template)
