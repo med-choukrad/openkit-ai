@@ -1,6 +1,7 @@
 """Validate parsed JSON objects against simple Python type schemas."""
 
 import math
+import sys
 import types
 import typing
 from collections.abc import Mapping
@@ -59,7 +60,18 @@ def _typed_dict_hints(expected: type) -> dict[str, object]:
     try:
         return get_type_hints(expected, include_extras=True)
     except (NameError, TypeError):
-        return dict(expected.__annotations__)
+        module = sys.modules.get(expected.__module__)
+        globalns = vars(module) if module is not None else {}
+        localns = dict(vars(expected))
+        resolved: dict[str, object] = {}
+        for field, annotation in expected.__annotations__.items():
+            try:
+                resolved[field] = typing._eval_type(annotation, globalns, localns)
+            except (NameError, TypeError):
+                # Keep unresolved annotations intact so schema validation can
+                # report them as invalid rather than losing other resolved fields.
+                resolved[field] = annotation
+        return resolved
 
 
 def _required_typed_dict_fields(expected: type) -> set[str]:
