@@ -12,6 +12,13 @@ from typing import TypeVar
 T = TypeVar("T")
 
 
+def _is_finite_number(value: int | float) -> bool:
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 def _validate_retry_options(
     retry_on: tuple[type[Exception], ...],
     max_attempts: int,
@@ -25,14 +32,14 @@ def _validate_retry_options(
         if (
             isinstance(value, bool)
             or not isinstance(value, (int, float))
-            or not math.isfinite(value)
+            or not _is_finite_number(value)
             or value < 0
         ):
             raise ValueError(f"{name} must be a finite non-negative number")
     if (
         isinstance(jitter, bool)
         or not isinstance(jitter, (int, float))
-        or not math.isfinite(jitter)
+        or not _is_finite_number(jitter)
         or not 0 <= jitter <= 1
     ):
         raise ValueError("jitter must be a finite number between 0 and 1")
@@ -56,7 +63,7 @@ def _retry_delay(
         if (
             isinstance(sample, bool)
             or not isinstance(sample, (int, float))
-            or not math.isfinite(sample)
+            or not _is_finite_number(sample)
             or not 0 <= sample <= 1
         ):
             raise ValueError("random_value must return a finite number between 0 and 1")
