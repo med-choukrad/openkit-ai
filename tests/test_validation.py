@@ -428,6 +428,35 @@ def test_typed_dict_requires_postponed_required_field():
         validate_json_response("{}", PostponedPartialProfile)
 
 
+class PostponedAdminProfile(AdminProfile):
+    __annotations__ = {"unresolved": "MissingType"}
+
+
+def test_typed_dict_fallback_preserves_inherited_annotations():
+    from openkit_ai.validation import _typed_dict_hints
+
+    assert set(_typed_dict_hints(PostponedAdminProfile)) == {
+        "name",
+        "age",
+        "nickname",
+        "role",
+        "unresolved",
+    }
+
+
+def test_nested_tuple_unions_validate_scalar_and_structural_options():
+    result = validate_json_response(
+        '{"value": {"name": "Ada"}}',
+        {"value": ((int, str), {"name": str})},
+    )
+    assert result["value"] == {"name": "Ada"}
+
+
+def test_nested_tuple_union_reports_expected_types_without_crashing():
+    with pytest.raises(JSONValidationError, match="expected int or str, got bool"):
+        validate_json_response('{"value": true}', {"value": ((int, str),)})
+
+
 def test_union_supports_nested_mapping_schema():
     result = validate_json_response(
         '{"payload": {"name": "Ada"}}',
