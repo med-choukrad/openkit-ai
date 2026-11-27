@@ -117,11 +117,13 @@ validate_json_response(
 You can also use `TypedDict` classes as object schemas. Required keys must be present, while keys annotated with `NotRequired[...]` may be omitted. `Required[...]` explicitly marks a key as required. TypedDict works recursively in nested objects and arrays, and `strict=True` rejects undeclared keys:
 
 ```python
-from typing import NotRequired, TypedDict
+from typing import TypedDict
 
-class User(TypedDict):
+class UserBase(TypedDict):
     name: str
-    nickname: NotRequired[str]
+
+class User(UserBase, total=False):
+    nickname: str
 
 validate_json_response(
     '{"name": "Ada"}',
