@@ -254,6 +254,12 @@ def test_rejects_value_outside_literal_choices():
         )
 
 
+@pytest.mark.parametrize("non_finite", [float("nan"), float("inf"), float("-inf")])
+def test_rejects_non_finite_literal_schema_values(non_finite):
+    with pytest.raises(TypeError, match="finite JSON scalar values"):
+        validate_json_response('{"value": 1}', {"value": Literal[non_finite]})
+
+
 def test_literal_matching_distinguishes_bool_from_int():
     with pytest.raises(JSONValidationError, match=r"expected Literal\(1,\), got bool"):
         validate_json_response('{"priority": true}', {"priority": Literal[1]})
