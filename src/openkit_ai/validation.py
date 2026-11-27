@@ -156,6 +156,11 @@ def _validate_type_spec(expected: object, path: str) -> None:
         if len(expected) != 1:
             raise TypeError(f"array schema for {path!r} must contain exactly one item schema")
         _validate_type_spec(expected[0], f"{path}[0]")
+    elif isinstance(expected, tuple):
+        if not expected:
+            raise TypeError(f"type union for {path!r} must contain at least one option")
+        for option in expected:
+            _validate_type_spec(option, path)
     elif _union_args(expected):
         for option in _union_args(expected):
             _validate_type_spec(option, path)
@@ -163,11 +168,6 @@ def _validate_type_spec(expected: object, path: str) -> None:
         values = _literal_args(expected)
         if not all(_is_json_scalar(value) for value in values):
             raise TypeError(f"Literal schema for {path!r} must contain finite JSON scalar values")
-    elif isinstance(expected, tuple):
-        if not expected:
-            raise TypeError(f"type union for {path!r} must contain at least one option")
-        for option in expected:
-            _validate_type_spec(option, path)
     elif _is_enum_type(expected):
         if not all(_is_json_scalar(member.value) for member in expected):
             raise TypeError(f"Enum schema for {path!r} must contain finite JSON scalar values")
