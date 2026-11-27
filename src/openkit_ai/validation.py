@@ -102,6 +102,14 @@ def _is_enum_type(expected: object) -> bool:
     return isinstance(expected, type) and issubclass(expected, Enum)
 
 
+def _is_json_scalar(value: object) -> bool:
+    return (
+        value is None
+        or isinstance(value, (str, int, bool))
+        or (isinstance(value, float) and math.isfinite(value))
+    )
+
+
 def _validate_type_spec(expected: object, path: str) -> None:
     expected = _unwrap_required(expected)
     if expected is Any:
@@ -130,19 +138,17 @@ def _validate_type_spec(expected: object, path: str) -> None:
             _validate_type_spec(option, path)
     elif _literal_args(expected):
         values = _literal_args(expected)
-        if not all(
-            value is None
-            or isinstance(value, (str, int, bool))
-            or (isinstance(value, float) and math.isfinite(value))
-            for value in values
-        ):
+        if not all(_is_json_scalar(value) for value in values):
             raise TypeError(f"Literal schema for {path!r} must contain finite JSON scalar values")
     elif isinstance(expected, tuple):
         if not expected:
             raise TypeError(f"type union for {path!r} must contain at least one option")
         for option in expected:
             _validate_type_spec(option, path)
-    elif _is_enum_type(expected) or isinstance(expected, type):
+    elif _is_enum_type(expected):
+        if not all(_is_json_scalar(member.value) for member in expected):
+            raise TypeError(f"Enum schema for {path!r} must contain finite JSON scalar values")
+    elif isinstance(expected, type):
         return
     else:
         raise TypeError(
