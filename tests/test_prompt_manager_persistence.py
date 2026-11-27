@@ -103,3 +103,19 @@ def test_load_rejects_boolean_format_version(tmp_path):
 
     with pytest.raises(ValueError, match="unsupported prompt file version"):
         PromptManager.load(path)
+
+
+@pytest.mark.parametrize(
+    "contents",
+    [
+        '{"version": 1, "version": 1, "prompts": []}',
+        '{"version": 1, "prompts": [{"name": "one", "name": "two", "template": "Hi"}]}',
+        '{"version": 1, "prompts": [{"name": "outer", "template": "{x}", "nested": {"a": 1, "a": 2}}]}',
+    ],
+)
+def test_load_rejects_duplicate_json_object_keys(tmp_path, contents):
+    path = tmp_path / "prompts.json"
+    path.write_text(contents, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="invalid prompt file JSON.*duplicate JSON object key"):
+        PromptManager.load(path)
