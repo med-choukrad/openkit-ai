@@ -12,7 +12,7 @@ from typing import TypeVar
 T = TypeVar("T")
 
 
-def _is_finite_number(value: int | float) -> bool:
+def _is_finite_number(value: float) -> bool:
     try:
         return math.isfinite(value)
     except OverflowError:
