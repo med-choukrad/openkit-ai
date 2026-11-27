@@ -1,5 +1,6 @@
 """Validate parsed JSON objects against simple Python type schemas."""
 
+import math
 import types
 import typing
 from collections.abc import Mapping
@@ -129,8 +130,13 @@ def _validate_type_spec(expected: object, path: str) -> None:
             _validate_type_spec(option, path)
     elif _literal_args(expected):
         values = _literal_args(expected)
-        if not all(value is None or isinstance(value, (str, int, float, bool)) for value in values):
-            raise TypeError(f"Literal schema for {path!r} must contain JSON scalar values")
+        if not all(
+            value is None
+            or isinstance(value, (str, int, bool))
+            or (isinstance(value, float) and math.isfinite(value))
+            for value in values
+        ):
+            raise TypeError(f"Literal schema for {path!r} must contain finite JSON scalar values")
     elif isinstance(expected, tuple):
         if not expected:
             raise TypeError(f"type union for {path!r} must contain at least one option")
