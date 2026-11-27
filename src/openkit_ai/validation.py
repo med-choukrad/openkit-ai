@@ -60,17 +60,24 @@ def _typed_dict_hints(expected: type) -> dict[str, object]:
     try:
         return get_type_hints(expected, include_extras=True)
     except (NameError, TypeError):
-        module = sys.modules.get(expected.__module__)
-        globalns = vars(module) if module is not None else {}
-        localns = dict(vars(expected))
         resolved: dict[str, object] = {}
-        for field, annotation in expected.__annotations__.items():
-            try:
-                resolved[field] = typing._eval_type(annotation, globalns, localns)
-            except (NameError, TypeError):
-                # Keep unresolved annotations intact so schema validation can
-                # report them as invalid rather than losing other resolved fields.
-                resolved[field] = annotation
+        localns = {
+            base.__name__: base
+            for base in expected.__mro__
+            if _is_typed_dict(base)
+        }
+        for base in reversed(expected.__mro__):
+            if not _is_typed_dict(base):
+                continue
+            module = sys.modules.get(base.__module__)
+            globalns = vars(module) if module is not None else {}
+            for field, annotation in base.__annotations__.items():
+                try:
+                    resolved[field] = typing._eval_type(annotation, globalns, localns)
+                except (NameError, TypeError):
+                    # Keep unresolved annotations intact so schema validation can
+                    # report them as invalid without losing inherited or sibling fields.
+                    resolved[field] = annotation
         return resolved
 
 
@@ -97,7 +104,11 @@ def _unwrap_required(expected: object) -> object:
 
 def _union_args(expected: object) -> tuple[object, ...]:
     if isinstance(expected, tuple):
-        return expected
+        return tuple(
+            option
+            for item in expected
+            for option in (_union_args(item) if isinstance(item, tuple) else (item,))
+        )
     origin = get_origin(expected)
     if origin in (Union, types.UnionType):
         return get_args(expected)
