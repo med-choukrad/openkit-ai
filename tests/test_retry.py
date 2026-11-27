@@ -80,7 +80,7 @@ def test_retry_delay_never_exceeds_max_delay_after_jitter():
     assert sleeps == [8]
 
 
-@pytest.mark.parametrize("sample", [-0.1, 1.1, float("nan"), float("inf"), True])
+@pytest.mark.parametrize("sample", [-0.1, 1.1, float("nan"), float("inf"), 10**1000, True])
 def test_rejects_invalid_random_value(sample):
     with pytest.raises(ValueError, match="random_value must return"):
         call_with_retry(
@@ -188,9 +188,12 @@ def test_async_validates_attempt_count():
         {"max_attempts": 1.5},
         {"base_delay": True},
         {"base_delay": float("nan")},
+        {"base_delay": 10**1000},
         {"max_delay": float("inf")},
+        {"max_delay": 10**1000},
         {"jitter": True},
         {"jitter": float("nan")},
+        {"jitter": 10**1000},
         {"retry_on": []},
         {"retry_on": (ValueError, 1)},
         {"retry_on": (BaseException,)},
