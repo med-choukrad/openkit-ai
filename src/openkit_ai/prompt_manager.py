@@ -75,10 +75,14 @@ class PromptManager:
                 result[key] = value
             return result
 
+        def reject_nonstandard_constant(value: str) -> None:
+            raise ValueError(f"invalid JSON constant: {value}")
+
         try:
             data: Any = json.loads(
                 source.read_text(encoding="utf-8"),
                 object_pairs_hook=reject_duplicate_keys,
+                parse_constant=reject_nonstandard_constant,
             )
         except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as error:
             raise ValueError(f"invalid prompt file JSON: {error}") from error
