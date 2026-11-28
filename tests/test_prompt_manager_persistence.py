@@ -128,3 +128,14 @@ def test_load_rejects_invalid_utf8(tmp_path):
 
     with pytest.raises(ValueError, match="invalid prompt file JSON"):
         PromptManager.load(path)
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_load_rejects_nonstandard_json_constants(tmp_path, constant):
+    path = tmp_path / "prompts.json"
+    path.write_text(
+        f'{"{"}"version": 1, "prompts": [], "extra": {constant}{"}"}',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="invalid prompt file JSON.*invalid JSON constant"):
+        PromptManager.load(path)
