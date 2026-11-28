@@ -124,7 +124,7 @@ def test_load_rejects_duplicate_json_object_keys(tmp_path, contents):
 
 def test_load_rejects_invalid_utf8(tmp_path):
     path = tmp_path / "prompts.json"
-    path.write_bytes(b'{"version": 1, "prompts": []}\\xff')
+    path.write_bytes(b'{"version": 1, "prompts": []}\xff')
 
     with pytest.raises(ValueError, match="invalid prompt file JSON"):
         PromptManager.load(path)
