@@ -40,7 +40,7 @@ class PromptTemplate:
 
     @staticmethod
     def _validate_named_fields(parsed: list[tuple[str, str | None, str | None, str | None]]) -> None:
-        for _, field_name, format_spec, _ in parsed:
+        for _, field_name, format_spec, conversion in parsed:
             if field_name is not None and (
                 not _root_field_name(field_name)
                 or _root_field_name(field_name).isdecimal()
@@ -48,6 +48,8 @@ class PromptTemplate:
                 raise ValueError(
                     "positional replacement fields are not supported; use named fields"
                 )
+            if conversion is not None and conversion not in {"s", "r", "a"}:
+                raise ValueError(f"unsupported format conversion: {conversion}")
             if format_spec:
                 nested = list(Formatter().parse(format_spec))
                 PromptTemplate._validate_named_fields(nested)
