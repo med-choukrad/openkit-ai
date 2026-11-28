@@ -21,6 +21,11 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 
+[project.urls]
+Homepage = "https://github.com/med-choukrad/openkit-ai"
+Repository = "https://github.com/med-choukrad/openkit-ai"
+Issues = "https://github.com/med-choukrad/openkit-ai/issues"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.5", "typing_extensions>=4.0"]
 
