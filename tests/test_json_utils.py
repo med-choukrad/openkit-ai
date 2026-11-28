@@ -48,6 +48,13 @@ def test_rejects_duplicate_json_object_keys(response):
         parse_json_response(response)
 
 
+
+def test_does_not_return_nested_object_from_invalid_duplicate_key_candidate():
+    response = '{"outer": {"valid": true}, "outer": {"other": true}}'
+    with pytest.raises(JSONResponseError):
+        parse_json_response(response)
+
+
 def test_ignores_json_looking_text_inside_quoted_prose():
     response = 'The quoted example is "{\\"fake\\": true}" but the actual result is {"real": true}'
     assert parse_json_response(response) == {"real": True}
