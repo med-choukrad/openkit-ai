@@ -62,9 +62,14 @@ def parse_json_response(response: str) -> Any:
         if character in "[{":
             try:
                 value, _ = decoder.raw_decode(text, index)
-            except (json.JSONDecodeError, ValueError):
+            except json.JSONDecodeError:
                 index += 1
                 continue
+            except ValueError as error:
+                # Do not fall through into nested values of a rejected JSON candidate.
+                raise JSONResponseError(
+                    "No valid JSON object or array found in response"
+                ) from error
             if isinstance(value, (dict, list)):
                 return value
         index += 1
