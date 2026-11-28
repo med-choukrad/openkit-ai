@@ -80,7 +80,7 @@ class PromptManager:
                 source.read_text(encoding="utf-8"),
                 object_pairs_hook=reject_duplicate_keys,
             )
-        except (json.JSONDecodeError, ValueError) as error:
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as error:
             raise ValueError(f"invalid prompt file JSON: {error}") from error
 
         if not isinstance(data, dict):
